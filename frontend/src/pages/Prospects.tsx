@@ -206,7 +206,8 @@ export function ProspectsPage() {
                 data?.items.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                    className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer group"
+                    onClick={() => (window.location.href = `/prospects/${p.id}`)}
                   >
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
