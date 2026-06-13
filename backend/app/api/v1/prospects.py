@@ -1,8 +1,9 @@
 """
 Prospects router — CRUD with filtering, search, pagination
+Plus T5 analysis endpoints (POST /prospects/{id}/enrich).
 """
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -223,3 +224,145 @@ async def delete_prospect(
         prospect.deleted_at = datetime.now(timezone.utc)
 
     await db.commit()
+
+
+# === T5 Analysis endpoints ===
+
+@router.post("/{prospect_id}/enrich")
+async def enrich_prospect_endpoint(
+    prospect_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+) -> dict[str, Any]:
+    """
+    Run analyst enrichment on a prospect (T5).
+
+    Pipeline: website audit → tech fingerprint → pain detection →
+    5-factor scoring → persist. Returns the summary dict.
+
+    For v1 this runs synchronously (since the work is fast — ~5s
+    typical). In production with LLM hooks, switch to Celery.
+    """
+    from app.tasks.analysis_tasks import enrich_prospect_task_sync
+
+    # Verify prospect exists
+    prospect = (
+        await db.execute(
+            select(Prospect).where(
+                Prospect.id == prospect_id,
+                Prospect.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if not prospect:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Prospect {prospect_id} not found",
+        )
+
+    summary = await enrich_prospect_task_sync(str(prospect_id))
+    if not summary.get("ok"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND
+            if summary.get("error") == "not_found"
+            else status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=summary.get("error", "enrichment failed"),
+        )
+    return summary
+
+
+@router.get("/{prospect_id}/detail")
+async def get_prospect_detail(
+    prospect_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+) -> dict[str, Any]:
+    """
+    Get full prospect detail including tech stack, pain points, and
+    lead score breakdown (T5 — for the prospect detail page).
+    """
+    from app.models.lead import LeadScore
+    from app.models.prospect import PainPoint, TechStack
+
+    prospect = (
+        await db.execute(
+            select(Prospect).where(
+                Prospect.id == prospect_id,
+                Prospect.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if not prospect:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Prospect {prospect_id} not found",
+        )
+
+    tech = (
+        await db.execute(
+            select(TechStack).where(TechStack.prospect_id == prospect_id)
+        )
+    ).scalar_one_or_none()
+
+    pains = (
+        (
+            await db.execute(
+                select(PainPoint)
+                .where(PainPoint.prospect_id == prospect_id)
+                .order_by(PainPoint.severity.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    score = (
+        await db.execute(
+            select(LeadScore).where(LeadScore.prospect_id == prospect_id)
+        )
+    ).scalar_one_or_none()
+
+    return {
+        "prospect": ProspectOut.model_validate(prospect).model_dump(mode="json"),
+        "tech_stack": (
+            {
+                "cms": tech.cms,
+                "framework": tech.framework,
+                "hosting_provider": tech.hosting_provider,
+                "has_ssl": tech.has_ssl,
+                "page_speed_score": tech.page_speed_score,
+                "technologies": tech.technologies,
+                "issues": tech.issues,
+                "audited_at": tech.audited_at.isoformat() if tech.audited_at else None,
+            }
+            if tech
+            else None
+        ),
+        "pain_points": [
+            {
+                "id": str(p.id),
+                "category": p.category,
+                "severity": p.severity,
+                "description": p.description,
+                "evidence_quote": p.evidence_quote,
+                "source": p.source,
+                "detected_at": p.detected_at.isoformat(),
+            }
+            for p in pains
+        ],
+        "lead_score": (
+            {
+                "signal_strength": float(score.signal_strength),
+                "pain_severity": float(score.pain_severity),
+                "budget_indicator": float(score.budget_indicator),
+                "solution_fit": float(score.solution_fit),
+                "timing_urgency": float(score.timing_urgency),
+                "total_score": float(score.total_score),
+                "grade": score.grade,
+                "reasoning": score.reasoning,
+                "scored_at": score.scored_at.isoformat(),
+            }
+            if score
+            else None
+        ),
+    }
