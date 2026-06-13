@@ -35,6 +35,20 @@ from app.schemas.sequences import (
     SequenceOut,
     SequenceUpdate,
 )
+from app.schemas.analytics import (
+    ActivityCount,
+    AnalyticsOverview,
+    AnalyticsRange,
+    ApprovalFunnelStats,
+    ConversionRate,
+    DailyVolume,
+    GradeDistribution,
+    LeadSourceQuality,
+    LLMUsageStats,
+    OutreachChannelStats,
+    PipelineStageCount,
+    TimeToEnrichStats,
+)
 from app.schemas.user import UserCreate, UserInDB, UserOut, UserUpdate
 
 __all__ = [
@@ -69,4 +83,16 @@ __all__ = [
     "SequenceListResponse",
     "SequenceOut",
     "SequenceUpdate",
+    "ActivityCount",
+    "AnalyticsOverview",
+    "AnalyticsRange",
+    "ApprovalFunnelStats",
+    "ConversionRate",
+    "DailyVolume",
+    "GradeDistribution",
+    "LeadSourceQuality",
+    "LLMUsageStats",
+    "OutreachChannelStats",
+    "PipelineStageCount",
+    "TimeToEnrichStats",
 ]
