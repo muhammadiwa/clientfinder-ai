@@ -1,0 +1,52 @@
+# SearXNG configuration for ClientFinder Scout Module
+# Minimal config — full customisation in T4
+
+use_default_settings: true
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  secret_key: "${SEARXNG_SECRET}"
+  limiter: false
+  image_proxy: false
+
+search:
+  default_doi: ""
+  formats:
+    - html
+    - json
+
+engines:
+  - name: google
+    engine: google
+    shortcut: g
+    disabled: false
+    timeout: 5.0
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+    timeout: 5.0
+
+  - name: bing
+    engine: bing
+    shortcut: b
+    disabled: false
+    timeout: 5.0
+
+  - name: brave
+    engine: brave
+    shortcut: br
+    disabled: false
+    timeout: 5.0
+
+categories_as_tabs:
+  general:
+  - general
+  images:
+  - images
+  videos:
+  - videos
+  news:
+  - news
