@@ -7,6 +7,7 @@ import { LoginPage } from "@/pages/auth/Login";
 import { RegisterPage } from "@/pages/auth/Register";
 import { DashboardPage } from "@/pages/Dashboard";
 import { ProspectsPage } from "@/pages/Prospects";
+import { ProspectDetailPage } from "@/pages/ProspectDetail";
 import { PipelinePage } from "@/pages/Pipeline";
 import { ScoutPage } from "@/pages/Scout";
 import { NotFoundPage } from "@/pages/NotFound";
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
       { path: "/", element: <Navigate to="/dashboard" replace /> },
       { path: "/dashboard", element: <DashboardPage /> },
       { path: "/prospects", element: <ProspectsPage /> },
+      { path: "/prospects/:id", element: <ProspectDetailPage /> },
       { path: "/pipeline", element: <PipelinePage /> },
       { path: "/scout", element: <ScoutPage /> },
       // Settings: nested layout with left rail (T9.6 audit)
