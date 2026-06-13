@@ -62,15 +62,42 @@ class Settings(BaseSettings):
     searxng_base_url: str = "http://localhost:8888"
     searxng_secret: str = "change-me"
 
-    # LLM
+    # LLM (legacy simple 2-slot config — backward compatible)
     llm_primary_provider: str = "groq"
+    llm_primary_base_url: str | None = None  # for custom OAI-compatible
     llm_primary_model: str = "llama-3.1-70b-versatile"
     llm_primary_api_key: str = ""
     llm_fallback_provider: str = "gemini"
+    llm_fallback_base_url: str | None = None
     llm_fallback_model: str = "gemini-1.5-flash"
     llm_fallback_api_key: str = ""
     llm_temperature: float = 0.3
     llm_max_tokens: int = 2048
+
+    # LLM (advanced — JSON list of providers, full control)
+    # When set, OVERRIDES the simple primary+fallback config.
+    # Each entry: {name, type, base_url, api_key, model, enabled, order, display_name}
+    #   - name: unique id (e.g. "groq", "tokenrouter", "ollama")
+    #   - type: "openai-compatible" or "gemini"
+    #   - base_url: required for OAI-compatible (auto-filled for known names)
+    #   - api_key: any string (use "ollama" for local)
+    #   - model: model identifier
+    #   - enabled: true/false (toggle on/off without removing)
+    #   - order: 1=primary, 2=fallback, 3+=chain
+    # Example:
+    #   LLM_PROVIDERS_JSON='[
+    #     {"name":"tokenrouter","type":"openai-compatible",
+    #      "api_key":"sk-...","model":"MiniMax-M3",
+    #      "enabled":true,"order":1,"display_name":"TokenRouter"},
+    #     {"name":"groq","type":"openai-compatible",
+    #      "api_key":"gsk-...","model":"llama-3.1-70b-versatile",
+    #      "enabled":true,"order":2},
+    #     {"name":"ollama","type":"openai-compatible",
+    #      "base_url":"http://host.docker.internal:11434/v1",
+    #      "api_key":"ollama","model":"llama3",
+    #      "enabled":false,"order":3}
+    #   ]'
+    llm_providers_json: str = ""
 
     # Email
     smtp_host: str = "smtp.zoho.com"
