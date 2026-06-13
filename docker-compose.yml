@@ -102,6 +102,7 @@ services:
       - ./backend/app:/app/app:ro
       - ./backend/alembic:/app/alembic:rw
       - ./backend/alembic.ini:/app/alembic.ini:ro
+      - ./backend/scripts:/app/scripts:ro
     networks:
       - cf-net
     security_opt:

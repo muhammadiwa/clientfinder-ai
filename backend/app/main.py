@@ -9,7 +9,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.v1 import auth
 from app.core.config import settings
+from app.core.database import close_db, init_db
 
 # Configure logging
 logging.basicConfig(
@@ -26,6 +28,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting ClientFinder AI Agent backend...")
     yield
     logger.info("Shutting down ClientFinder AI Agent backend...")
+    await close_db()
 
 
 app = FastAPI(
@@ -46,6 +49,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Routers
+app.include_router(auth.router, prefix="/api/v1")
 
 
 @app.get("/")
