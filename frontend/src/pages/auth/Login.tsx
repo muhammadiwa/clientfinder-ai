@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,21 +12,37 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useLogin } from "@/hooks/useAuth";
+import { isApiError } from "@/api/client";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const login = useLogin();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const from = (location.state as { from?: string } | null)?.from ?? "/dashboard";
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO(T3-Group-5): wire to useAuthStore.login()
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigate("/dashboard");
-    }, 500);
+    try {
+      await login.mutateAsync({ email, password });
+      toast.success("Welcome back!");
+      navigate(from, { replace: true });
+    } catch (error) {
+      if (isApiError(error)) {
+        const detail = error.response?.data?.detail;
+        const message =
+          typeof detail === "string"
+            ? detail
+            : "Invalid email or password";
+        toast.error(message);
+      } else {
+        toast.error("Network error. Please try again.");
+      }
+    }
   };
 
   return (
@@ -50,6 +67,9 @@ export function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
+                autoFocus
+                disabled={login.isPending}
               />
             </div>
             <div className="space-y-2">
@@ -62,18 +82,23 @@ export function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
+                disabled={login.isPending}
               />
             </div>
           </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
+          <CardFooter className="flex flex-col space-y-3">
+            <Button type="submit" className="w-full" disabled={login.isPending}>
+              {login.isPending ? "Signing in..." : "Sign in"}
             </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              No account?{" "}
+              <Link to="/register" className="text-primary hover:underline">
+                Create one
+              </Link>
+            </p>
           </CardFooter>
         </form>
-        <p className="px-6 pb-6 text-xs text-muted-foreground text-center">
-          T3 Group 5 will wire this to the backend via TanStack Query + Zustand
-        </p>
       </Card>
     </div>
   );

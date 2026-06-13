@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { Topbar } from "./Topbar";
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,7 +11,7 @@ interface LayoutProps {
 /**
  * Top-level authenticated layout:
  * - Sidebar (left) with nav links
- * - Topbar with user menu
+ * - Topbar (right) with user menu + sign out
  * - Main content area
  */
 export function Layout({ children }: LayoutProps) {
@@ -53,14 +54,5 @@ function Sidebar() {
         ))}
       </nav>
     </aside>
-  );
-}
-
-function Topbar() {
-  return (
-    <header className="h-14 border-b bg-card flex items-center justify-between px-6">
-      <div className="text-sm text-muted-foreground">T3 Group 3: Router + Layout</div>
-      <div className="text-sm text-muted-foreground">admin@clientfinder.app</div>
-    </header>
   );
 }
