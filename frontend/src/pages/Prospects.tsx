@@ -175,20 +175,31 @@ export function ProspectsPage() {
                 </tr>
               ) : data?.items.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center">
-                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground mx-auto mb-3">
-                      <Filter className="h-5 w-5" />
-                    </div>
-                    <p className="text-sm font-medium">No prospects found</p>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
-                      {search
-                        ? `No results for "${search}". Try a different search term.`
-                        : "Run a scout job to discover businesses that need software services."}
-                    </p>
-                    <Button className="mt-4" size="sm">
-                      <Plus className="h-4 w-4" />
-                      Start prospecting
-                    </Button>
+                  <td colSpan={7} className="p-0">
+                    <EmptyState
+                      className="py-16"
+                      icon={<Filter className="h-5 w-5" />}
+                      title={
+                        search
+                          ? `No results for "${search}"`
+                          : statusFilter !== "all"
+                            ? `No ${statusFilter} prospects`
+                            : "No prospects found"
+                      }
+                      description={
+                        search
+                          ? "Try a different search term or clear the filter."
+                          : "Run a scout job to discover businesses that need software services."
+                      }
+                      action={
+                        <Button className="mt-4" size="sm" asChild>
+                          <Link to="/prospects?new=1">
+                            <Plus className="h-4 w-4" />
+                            Start prospecting
+                          </Link>
+                        </Button>
+                      }
+                    />
                   </td>
                 </tr>
               ) : (
