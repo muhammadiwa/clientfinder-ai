@@ -44,8 +44,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy application code
 COPY app/ /app/app/
 
-# Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser \
+# Create non-root user with UID 1000 (matches typical host user for bind mounts)
+ARG UID=1000
+RUN groupadd -r appuser -g ${UID} && useradd -r -u ${UID} -g appuser appuser \
     && mkdir -p /app/.sessions /app/logs \
     && chown -R appuser:appuser /app
 USER appuser
