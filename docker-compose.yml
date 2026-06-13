@@ -114,8 +114,6 @@ services:
       dockerfile: Dockerfile
     container_name: cf-celery-worker
     restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     command:
       - celery
       - -A
@@ -129,6 +127,11 @@ services:
     env_file:
       - .env
     environment:
+      # Playwright chromium installed in Dockerfile. Cache path is
+      # /home/appuser/.cache/ms-playwright (NOT /root/.cache because
+      # /root is mode 700 and appuser can't traverse it after USER
+      # directive in Dockerfile).
+      PLAYWRIGHT_BROWSERS_PATH: /home/appuser/.cache/ms-playwright
       PYTHONPATH: /app
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-clientfinder}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-clientfinder}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0

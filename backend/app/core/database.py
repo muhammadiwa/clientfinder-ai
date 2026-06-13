@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 
@@ -25,10 +26,15 @@ def _make_engine() -> AsyncEngine:
     return create_async_engine(
         settings.database_url,
         echo=settings.app_debug,
+        # NullPool: setiap request/task buka koneksi baru, tutup setelah selesai.
+        # Penting untuk Celery workers — pool koneksi asyncpg yang dipakai
+        # lintas event-loop (Celery task vs FastAPI request) akan error
+        # "got Future attached to a different loop".
+        # Tradeoff: latency naik ~5-10ms per query (handshake overhead).
+        # Untuk v1 (solo dev, low traffic) ini trade-off yang bagus.
+        # Production: consider a separate sync engine untuk Celery.
+        poolclass=NullPool,
         pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20,
-        pool_recycle=3600,
     )
 
 
