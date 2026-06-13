@@ -1,12 +1,12 @@
-import { Link } from "react-router-dom";
-import { LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { LogOut, User as UserIcon } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth";
 import { useMe, useLogout } from "@/hooks/useAuth";
-import { useEffect } from "react";
+import { MobileNav } from "./MobileNav";
 
 export function Topbar() {
   const navigate = useNavigate();
@@ -14,10 +14,8 @@ export function Topbar() {
   const me = useMe(isAuthenticated);
   const logout = useLogout();
 
-  // On mount, if we have a token, refresh user data
   useEffect(() => {
     if (isAuthenticated && me.isError) {
-      // Token likely invalid, clear
       useAuthStore.getState().clearAuth();
       navigate("/login");
     }
@@ -36,12 +34,16 @@ export function Topbar() {
   };
 
   return (
-    <header className="h-14 border-b bg-card flex items-center justify-between px-6">
-      <div className="text-sm text-muted-foreground">ClientFinder AI Agent</div>
-      <div className="flex items-center gap-4">
-        <span className="text-sm text-muted-foreground">
-          {me.data?.email ?? user?.email ?? "guest"}
-        </span>
+    <header className="h-14 border-b bg-card flex items-center justify-between px-4 md:px-6">
+      <div className="flex items-center gap-2">
+        <MobileNav />
+        <h2 className="text-sm font-semibold md:hidden">ClientFinder</h2>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+          <UserIcon className="h-4 w-4" />
+          <span>{me.data?.email ?? user?.email ?? "guest"}</span>
+        </div>
         {isAuthenticated ? (
           <Button
             variant="ghost"

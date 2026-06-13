@@ -1,7 +1,6 @@
-import { useEffect } from "react";
-import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { useRegister } from "@/hooks/useAuth";
 import { isApiError } from "@/api/client";
-import { useState } from "react";
 
 export function RegisterPage() {
   const navigate = useNavigate();

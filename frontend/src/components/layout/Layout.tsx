@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
 interface LayoutProps {
@@ -10,8 +10,9 @@ interface LayoutProps {
 
 /**
  * Top-level authenticated layout:
- * - Sidebar (left) with nav links
- * - Topbar (right) with user menu + sign out
+ * - Sidebar (desktop only, hidden on mobile via Sidebar)
+ * - MobileNav (hamburger menu, mobile only)
+ * - Topbar with user menu + sign out
  * - Main content area
  */
 export function Layout({ children }: LayoutProps) {
@@ -19,40 +20,11 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background text-foreground">
       <div className="flex">
         <Sidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <Topbar />
-          <main className={cn("flex-1 p-6")}>{children}</main>
+          <main className={cn("flex-1 p-4 md:p-6")}>{children}</main>
         </div>
       </div>
     </div>
-  );
-}
-
-function Sidebar() {
-  const navItems = [
-    { to: "/dashboard", label: "Dashboard" },
-    { to: "/prospects", label: "Prospects" },
-    { to: "/pipeline", label: "Pipeline" },
-    { to: "/settings", label: "Settings" },
-  ];
-
-  return (
-    <aside className="w-56 border-r bg-card min-h-screen sticky top-0">
-      <div className="p-6 border-b">
-        <h1 className="text-lg font-bold">ClientFinder</h1>
-        <p className="text-xs text-muted-foreground">AI Agent v0.1.0</p>
-      </div>
-      <nav className="p-3 space-y-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            className="block px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-    </aside>
   );
 }
