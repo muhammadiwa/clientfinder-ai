@@ -2,6 +2,12 @@
 Pydantic schemas for API request/response
 """
 from app.schemas.auth import LoginRequest, LogoutRequest, RefreshRequest, Token
+from app.schemas.prospect import (
+    ProspectCreate,
+    ProspectListResponse,
+    ProspectOut,
+    ProspectUpdate,
+)
 from app.schemas.user import UserCreate, UserInDB, UserOut, UserUpdate
 
 __all__ = [
@@ -13,4 +19,8 @@ __all__ = [
     "UserInDB",
     "UserOut",
     "UserUpdate",
+    "ProspectCreate",
+    "ProspectListResponse",
+    "ProspectOut",
+    "ProspectUpdate",
 ]
