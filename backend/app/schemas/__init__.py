@@ -22,6 +22,18 @@ from app.schemas.outreach import (
     MessageOut,
     MessageUpdate,
 )
+from app.schemas.templates import (
+    TemplateCreate,
+    TemplateListResponse,
+    TemplateOut,
+    TemplateUpdate,
+)
+from app.schemas.sequences import (
+    SequenceCreate,
+    SequenceListResponse,
+    SequenceOut,
+    SequenceUpdate,
+)
 from app.schemas.user import UserCreate, UserInDB, UserOut, UserUpdate
 
 __all__ = [
@@ -47,4 +59,12 @@ __all__ = [
     "MessageListResponse",
     "MessageOut",
     "MessageUpdate",
+    "TemplateCreate",
+    "TemplateListResponse",
+    "TemplateOut",
+    "TemplateUpdate",
+    "SequenceCreate",
+    "SequenceListResponse",
+    "SequenceOut",
+    "SequenceUpdate",
 ]

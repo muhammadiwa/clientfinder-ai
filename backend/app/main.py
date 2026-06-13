@@ -9,7 +9,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1 import ai, auth, outreach, prospects, scraping
+from app.api.v1 import (
+    ai,
+    auth,
+    outreach,
+    prospects,
+    scraping,
+    sequences,
+    templates,
+)
 from app.core.config import settings
 from app.core.database import close_db, init_db
 
@@ -56,6 +64,8 @@ app.include_router(prospects.router, prefix="/api/v1")
 app.include_router(scraping.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
 app.include_router(outreach.router, prefix="/api/v1")
+app.include_router(templates.router, prefix="/api/v1")
+app.include_router(sequences.router, prefix="/api/v1")
 
 
 @app.get("/")
