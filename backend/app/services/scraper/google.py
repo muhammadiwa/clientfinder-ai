@@ -11,6 +11,7 @@ Per playbook R7: pragmatic-legal, no API key, no ToS violation.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 from urllib.parse import urlparse
 
@@ -105,13 +106,9 @@ class GoogleSearchScraper(BaseScraper):
             return None
 
         domain = cls._extract_domain(url)
-        # Use domain as company name if title is generic
-        company = title
-        # If title looks like "Foo - Bar", try to take the first part
-        for sep in [" | ", " - ", " — ", " · "]:
-            if sep in title:
-                company = title.split(sep)[0].strip()
-                break
+        company = cls._extract_company_name(title)
+        if not company:
+            return None
 
         return ScrapedResult(
             company_name=company[:255],
@@ -125,3 +122,46 @@ class GoogleSearchScraper(BaseScraper):
                 "raw_title": title,
             },
         )
+
+    @staticmethod
+    def _extract_company_name(title: str) -> str | None:
+        """Heuristic company name extraction from a SearXNG result title.
+
+        Real businesses usually end with "PT. Foo", "CV Bar", "Foo Inc",
+        or have a recognizable short form. Common words like "Home" or
+        "About" are stripped.
+
+        Strategy:
+        1. Try splitting on common separators; take the part that looks
+           like a company (ends in PT/CV/Inc/Ltd or is fully capitalized).
+        2. If no separator hit, check for generic words and trim.
+        3. Fall back to the full title.
+        """
+        if not title:
+            return None
+        # Heuristics: take last segment if it contains "PT", "CV", "Inc"
+        # (this catches "Home - PT. ABC Indonesia" → "PT. ABC Indonesia")
+        for sep in [" | ", " — ", " · "]:
+            if sep in title:
+                parts = [p.strip() for p in title.split(sep) if p.strip()]
+                if parts:
+                    # Prefer the part that looks like a real company
+                    for p in reversed(parts):
+                        if re.search(r"\b(PT|CV|Inc|Ltd|LLC|Co)\b\.?", p, re.IGNORECASE):
+                            return p
+                    return parts[-1]
+        # "Foo - Bar" split: take the part that's not generic
+        if " - " in title:
+            parts = [p.strip() for p in title.split(" - ") if p.strip()]
+            if parts:
+                generic = {"home", "about", "beranda", "tentang", "kontak", "contact", "blog", "news"}
+                for p in reversed(parts):
+                    if p.lower() not in generic and len(p) > 2:
+                        return p
+                return parts[-1]
+        return title
+
+        # Need regex for the PT/CV detection
+        import re as _re
+
+        return title

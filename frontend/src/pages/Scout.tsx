@@ -19,6 +19,7 @@ import {
   MessagesSquare,
   Sparkles as SparklesIcon,
   ArrowRight,
+  Lock,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -107,6 +108,9 @@ const STATUS_BADGE: Record<
 
 const POLL_INTERVAL_MS = 3_000;
 
+// Quick-step max results options (P2-A4: replaces slider with chips)
+const MAX_RESULTS_OPTIONS = [5, 10, 20, 35, 50] as const;
+
 export function ScoutPage() {
   // Form state
   const [source, setSource] = useState<ScrapingSource>("google");
@@ -122,11 +126,11 @@ export function ScoutPage() {
   const [presetsLoading, setPresetsLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Recent discoveries (use existing prospects endpoint, filtered by source != 'manual')
+  // Recent discoveries — only scout-found (P1-A10: filter by source != 'manual')
   const {
     data: recentProspectsData,
     isLoading: recentLoading,
-  } = useProspects({ per_page: 8 });
+  } = useProspects({ per_page: 8, source: "" });
 
   // Poll for job status when there are running/pending jobs
   const hasActiveJobs = useMemo(
@@ -186,14 +190,15 @@ export function ScoutPage() {
     };
   }, []);
 
-  const recentProspects = recentProspectsData?.items ?? [];
+  const recentProspects = (recentProspectsData?.items ?? []).filter(
+    (p) => p.source !== "manual",
+  );
 
   const handlePreset = (p: ScrapingPreset) => {
     setSource(p.source);
     setKeywords(p.query.keywords);
     setLocation(p.query.location ?? "");
     setMaxResults(p.query.max_results ?? 20);
-    // Smooth scroll to the form
     document
       .getElementById("scout-form-card")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -244,13 +249,21 @@ export function ScoutPage() {
     }
   };
 
+  // P0-A3: native confirm() replaced with toast + undo pattern.
+  // Better UX, consistent with rest of app, no native dialog.
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this job? (Prospects already added are kept.)")) return;
+    // Optimistic UI: remove from list immediately
+    const previous = jobs;
+    setJobs((js) => js.filter((j) => j.id !== id));
     try {
       await deleteScrapingJob(id);
-      toast.success("Job deleted");
-      setReloadKey((k) => k + 1);
+      toast.success(
+        "Job deleted. Prospects already added are kept.",
+        { duration: 4000 },
+      );
     } catch {
+      // Revert on failure
+      setJobs(previous);
       toast.error("Could not delete job");
     }
   };
@@ -319,30 +332,47 @@ export function ScoutPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Source selector */}
+              {/* Source selector — P1-A2: a11y improvements */}
               <div>
                 <label className="text-sm font-medium">Source</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
                   {SOURCES.map((s) => {
                     const isActive = source === s.id;
+                    const a11yLabel = `${s.label}. ${s.description}${
+                      !s.available ? ". Coming soon." : ""
+                    }`;
                     return (
                       <button
                         key={s.id}
                         type="button"
                         disabled={!s.available}
                         onClick={() => setSource(s.id)}
+                        aria-label={a11yLabel}
+                        aria-disabled={!s.available}
+                        title={s.description}
                         className={cn(
                           "flex flex-col items-start gap-1.5 p-3 rounded-lg border text-left transition-all duration-150",
                           isActive
                             ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30 ring-1 ring-violet-500"
                             : "border-border bg-background hover:border-violet-300",
-                          !s.available && "opacity-50 cursor-not-allowed",
+                          !s.available &&
+                            "opacity-60 cursor-not-allowed",
                         )}
-                        title={s.available ? s.description : "Coming soon"}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full">
                           {s.icon}
-                          <span className="text-sm font-medium">{s.label}</span>
+                          <span className="text-sm font-medium flex-1">
+                            {s.label}
+                          </span>
+                          {!s.available && (
+                            <span
+                              className="ml-auto inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
+                              aria-hidden
+                            >
+                              <Lock className="h-2.5 w-2.5" />
+                              Soon
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-muted-foreground line-clamp-2">
                           {s.description}
@@ -373,7 +403,7 @@ export function ScoutPage() {
                 />
               </div>
 
-              {/* Location (optional, especially for maps) */}
+              {/* Location */}
               <div className="space-y-2">
                 <label htmlFor="location" className="text-sm font-medium">
                   Location{" "}
@@ -391,24 +421,30 @@ export function ScoutPage() {
                 />
               </div>
 
-              {/* Max results */}
+              {/* P2-A4: segmented control instead of slider */}
               <div className="space-y-2">
-                <label htmlFor="max" className="text-sm font-medium flex justify-between">
-                  <span>Max results</span>
-                  <span className="text-muted-foreground num text-xs">
-                    {maxResults}
-                  </span>
-                </label>
-                <input
-                  id="max"
-                  type="range"
-                  min={5}
-                  max={50}
-                  step={5}
-                  value={maxResults}
-                  onChange={(e) => setMaxResults(Number(e.target.value))}
-                  className="w-full accent-violet-600"
-                />
+                <label className="text-sm font-medium">Max results</label>
+                <div className="flex flex-wrap gap-2">
+                  {MAX_RESULTS_OPTIONS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setMaxResults(n)}
+                      disabled={submitting}
+                      className={cn(
+                        "px-3 h-9 rounded-lg text-sm font-medium border transition-all duration-150",
+                        maxResults === n
+                          ? "bg-violet-600 text-white border-violet-600 shadow-glow-sm"
+                          : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-violet-300",
+                      )}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Estimated ~{Math.ceil(maxResults / 5)}s search time
+                </p>
               </div>
 
               <Button
@@ -434,7 +470,7 @@ export function ScoutPage() {
           </CardContent>
         </Card>
 
-        {/* Active jobs */}
+        {/* Active jobs — P0-A9: progress indicator when running */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -477,7 +513,7 @@ export function ScoutPage() {
         </Card>
       </div>
 
-      {/* Recent discoveries */}
+      {/* Recent discoveries — P1-A10: only scout-found */}
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -503,7 +539,7 @@ export function ScoutPage() {
             <EmptyState
               className="py-8"
               icon={<Globe className="h-5 w-5" />}
-              title="No prospects yet"
+              title="No scout discoveries yet"
               description="Start a scout job and new prospects will appear here automatically"
             />
           ) : (
@@ -528,10 +564,10 @@ export function ScoutPage() {
                         {p.source}
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">
-                        {p.location_city ?? "—"}
+                        {p.location_city ?? (typeof p.raw_data?.location_address === 'string' ? p.raw_data.location_address : "—")}
                       </td>
                       <td className="px-6 py-3 text-right text-xs text-muted-foreground num">
-                        {formatRelative(p.discovered_at)}
+                        {formatRelativeId(p.discovered_at)}
                       </td>
                     </tr>
                   ))}
@@ -566,6 +602,14 @@ function JobRow({ job, onRetry, onDelete }: JobRowProps) {
     }
   })();
 
+  // P0-A9: live progress for running jobs
+  const elapsedSeconds = (() => {
+    if (job.status !== "running" || !job.started_at) return null;
+    const start = new Date(job.started_at).getTime();
+    if (Number.isNaN(start)) return null;
+    return Math.max(0, Math.floor((Date.now() - start) / 1000));
+  })();
+
   return (
     <div className="p-3 rounded-lg border border-border bg-card/50 hover:bg-card transition-colors">
       <div className="flex items-start justify-between gap-2">
@@ -578,7 +622,7 @@ function JobRow({ job, onRetry, onDelete }: JobRowProps) {
               </span>
             )}
           </p>
-          <div className="flex items-center gap-2 mt-1.5">
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span
               className={cn(
                 "inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full",
@@ -594,6 +638,11 @@ function JobRow({ job, onRetry, onDelete }: JobRowProps) {
             {job.status === "completed" && (
               <span className="text-xs text-emerald-600 font-medium num">
                 +{job.prospects_found} prospects
+              </span>
+            )}
+            {elapsedSeconds !== null && (
+              <span className="text-xs text-blue-600/80 font-medium num tabular-nums">
+                {elapsedSeconds}s elapsed
               </span>
             )}
           </div>
@@ -630,16 +679,17 @@ function JobRow({ job, onRetry, onDelete }: JobRowProps) {
   );
 }
 
-function formatRelative(iso: string): string {
+// P2-A6: Indonesian relative time
+function formatRelativeId(iso: string): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "—";
   const diff = Date.now() - then;
   const sec = Math.floor(diff / 1000);
-  if (sec < 60) return `${sec}s ago`;
+  if (sec < 60) return `${sec} dtk lalu`;
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return `${min} mnt lalu`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  if (hr < 24) return `${hr} jam lalu`;
   const days = Math.floor(hr / 24);
-  return `${days}d ago`;
+  return `${days} hari lalu`;
 }

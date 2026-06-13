@@ -3,6 +3,7 @@ Scraping router — endpoints for Scout module (T4)
 """
 from typing import Annotated
 
+from celery.exceptions import OperationalError
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
@@ -16,8 +17,12 @@ from app.schemas.scraping import (
     ScrapingJobCreate,
     ScrapingJobListResponse,
     ScrapingJobOut,
+    ScrapingPresetOut,
 )
 from app.services.scraper import get_scraper, persist_scraped_to_prospects
+# Import at module level so we can fall back to sync without
+# wrapping the import in a try/except (P1-B1 fix).
+from app.tasks.scraping_tasks import run_scraping_job, run_scraping_job_sync
 
 router = APIRouter(prefix="/scraping", tags=["scouting"])
 
@@ -71,16 +76,19 @@ async def create_scraping_job(
     )
     await db.commit()
 
-    # Enqueue background execution
+    # Enqueue background execution.
+    # Catch only broker-connection errors (not broad Exception) so
+    # we don't silently swallow real bugs (P0-B1 fix). Sync
+    # fallback still blocks the event loop for ~30-50s on Maps
+    # — acceptable as last-resort; T8 should add circuit breaker.
     try:
-        from app.tasks.scraping_tasks import run_scraping_job
-
         run_scraping_job.delay(str(job.id))
-    except Exception as e:  # noqa: BLE001
-        # If Celery unavailable (e.g. eager mode or broker down),
-        # run synchronously so the job still completes
-        from app.tasks.scraping_tasks import run_scraping_job_sync
-
+    except (OperationalError, ConnectionError, TimeoutError) as e:
+        # Broker down: log warning, run sync as last resort
+        import logging
+        logging.getLogger("clientfinder.scraping.api").warning(
+            "Celery broker unavailable, running sync: %s", e
+        )
         await run_scraping_job_sync(str(job.id))
 
     return job
@@ -166,12 +174,8 @@ async def retry_scraping_job(
 
     # Re-enqueue
     try:
-        from app.tasks.scraping_tasks import run_scraping_job
-
         run_scraping_job.delay(str(job.id))
-    except Exception:  # noqa: BLE001
-        from app.tasks.scraping_tasks import run_scraping_job_sync
-
+    except (OperationalError, ConnectionError, TimeoutError):
         await run_scraping_job_sync(str(job.id))
 
     return job
@@ -183,7 +187,7 @@ async def delete_scraping_job(
     current_user: CurrentUser,
     db: DB,
 ) -> None:
-    """Delete a scraping job (and log)."""
+    """Delete a scraping job. Logs the deletion to activity (P1-B11 fix)."""
     from uuid import UUID
 
     try:
@@ -196,45 +200,56 @@ async def delete_scraping_job(
     ).scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # Log the deletion BEFORE removing the job (so we still have
+    # the source for the activity record).
+    db.add(
+        Activity(
+            prospect_id=None,
+            user_id=current_user.id,
+            action="scraping_job_deleted",
+            details={
+                "source": job.source,
+                "query": job.query,
+                "prospects_found": job.prospects_found,
+            },
+        )
+    )
     await db.delete(job)
     await db.commit()
 
 
-@router.get("/presets", response_model=list[dict])
+@router.get("/presets", response_model=list[ScrapingPresetOut])
 async def list_scraping_presets(
     current_user: CurrentUser,
     db: DB,
-) -> list[dict]:
-    """List saved query presets. Stub for v1 — returns curated defaults."""
+) -> list[ScrapingPresetOut]:
+    """List saved query presets (P1-B9 fix: use proper schema)."""
+    from app.schemas.scraping import ScrapingQuery
+
     return [
-        {
-            "id": "preset-klinik-jabodetabek",
-            "name": "Klinik Gigi — Jabodetabek",
-            "source": "google",
-            "query": {
-                "keywords": "klinik gigi",
-                "location": "Jabodetabek",
-                "max_results": 30,
-            },
-        },
-        {
-            "id": "preset-fnb-jakarta",
-            "name": "Restoran & Kafe — Jakarta",
-            "source": "maps",
-            "query": {
-                "keywords": "restoran kafe",
-                "location": "Jakarta",
-                "max_results": 30,
-            },
-        },
-        {
-            "id": "preset-apotek-bandung",
-            "name": "Apotek — Bandung",
-            "source": "maps",
-            "query": {
-                "keywords": "apotek",
-                "location": "Bandung",
-                "max_results": 25,
-            },
-        },
+        ScrapingPresetOut(
+            id="preset-klinik-jabodetabek",
+            name="Klinik Gigi — Jabodetabek",
+            source="google",
+            query=ScrapingQuery(
+                keywords="klinik gigi", location="Jabodetabek", max_results=30
+            ),
+        ),
+        ScrapingPresetOut(
+            id="preset-fnb-jakarta",
+            name="Restoran & Kafe — Jakarta",
+            source="maps",
+            query=ScrapingQuery(
+                keywords="restoran kafe", location="Jakarta", max_results=30
+            ),
+        ),
+        ScrapingPresetOut(
+            id="preset-apotek-bandung",
+            name="Apotek — Bandung",
+            source="maps",
+            query=ScrapingQuery(
+                keywords="apotek", location="Bandung", max_results=25
+            ),
+        ),
     ]
