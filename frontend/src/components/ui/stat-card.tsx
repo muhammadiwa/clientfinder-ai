@@ -58,6 +58,9 @@ export function StatCard({
                 {Math.abs(delta.value)}%
               </span>
             )}
+            {delta && description && (
+              <span className="text-muted-foreground/50">·</span>
+            )}
             {description && (
               <span className="text-muted-foreground">{description}</span>
             )}
