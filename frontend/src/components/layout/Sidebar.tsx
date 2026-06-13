@@ -1,6 +1,13 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, KanbanSquare, Settings } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  KanbanSquare,
+  Settings,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -9,13 +16,39 @@ const navItems = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
+/**
+ * Sidebar — per UI/UX Playbook §7.6
+ * - Dark slate-900 with subtle vertical gradient
+ * - Brand block: gradient Sparkles + "ClientFinder" with subtle hover scale
+ * - Nav items: gradient bg for active, slate-800/50 hover for inactive
+ * - Footer: user profile block with email + role
+ */
 export function Sidebar() {
+  const user = useAuthStore((s) => s.user);
+
   return (
-    <aside className="hidden md:flex w-56 border-r bg-card min-h-screen sticky top-0 flex-col">
-      <div className="p-6 border-b">
-        <h1 className="text-lg font-bold">ClientFinder</h1>
-        <p className="text-xs text-muted-foreground">AI Agent v0.1.0</p>
+    <aside className="hidden md:flex w-60 bg-sidebar-gradient text-slate-100 min-h-screen sticky top-0 flex-col border-r border-slate-800/50">
+      {/* Brand block */}
+      <div className="p-5 border-b border-slate-800/50">
+        <NavLink
+          to="/dashboard"
+          className="flex items-center gap-2.5 group"
+        >
+          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-glow-sm transition-transform duration-200 group-hover:scale-105">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-base font-bold leading-none text-white">
+              ClientFinder
+            </h1>
+            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-medium">
+              AI Agent
+            </p>
+          </div>
+        </NavLink>
       </div>
+
+      {/* Nav items */}
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => (
           <NavLink
@@ -24,22 +57,44 @@ export function Sidebar() {
             end
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ease-out-expo",
                 isActive
-                  ? "bg-primary text-primary-foreground font-medium"
-                  : "hover:bg-accent hover:text-accent-foreground",
+                  ? "bg-gradient-to-r from-violet-600/20 to-indigo-600/10 text-white border border-violet-500/30 shadow-glow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50",
               )
             }
           >
-            <item.icon className="h-4 w-4" />
-            {item.label}
+            {({ isActive }) => (
+              <>
+                <item.icon
+                  className={cn(
+                    "h-4 w-4 transition-colors",
+                    isActive ? "text-violet-300" : "",
+                  )}
+                />
+                {item.label}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
-      <div className="p-3 border-t text-xs text-muted-foreground">
-        <p className="px-3">T3 Group 6 of 7</p>
-        <p className="px-3">Sidebar w/ icons + active</p>
-      </div>
+
+      {/* User footer */}
+      {user && (
+        <div className="p-3 border-t border-slate-800/50">
+          <div className="flex items-center gap-3 p-2 rounded-lg">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-medium text-sm shadow-glow-sm">
+              {(user.email?.[0] ?? "U").toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">
+                {user.email}
+              </p>
+              <p className="text-xs text-slate-400 capitalize">{user.role}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
