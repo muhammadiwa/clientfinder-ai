@@ -11,6 +11,7 @@ import { ProspectDetailPage } from "@/pages/ProspectDetail";
 import { PipelinePage } from "@/pages/Pipeline";
 import { ScoutPage } from "@/pages/Scout";
 import { OutreachPage } from "@/pages/Outreach";
+import { AnalyticsPage } from "@/pages/Analytics";
 import { NotFoundPage } from "@/pages/NotFound";
 import { ProfileSection } from "@/pages/settings/Profile";
 import { IntegrationsSection } from "@/pages/settings/Integrations";
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: "/pipeline", element: <PipelinePage /> },
       { path: "/scout", element: <ScoutPage /> },
       { path: "/outreach", element: <OutreachPage /> },
+      { path: "/analytics", element: <AnalyticsPage /> },
       // Settings: nested layout with left rail (T9.6 audit)
       {
         path: "/settings",
