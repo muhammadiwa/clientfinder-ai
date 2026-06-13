@@ -72,6 +72,37 @@ async def _run_job(job_id_str: str) -> int:
             )
             await db.commit()
             logger.info("Job %s completed: %d new prospects", job_id_str, inserted)
+
+            # T5: auto-enqueue analysis for the just-inserted
+            # prospects. We need their DB IDs, so re-query.
+            if inserted > 0:
+                try:
+                    from app.models.prospect import Prospect
+                    from app.tasks.analysis_tasks import enrich_prospect_task
+                    from sqlalchemy import select, desc
+
+                    # Find the N most-recent prospects whose
+                    # company names match the just-inserted ones
+                    # (handles the case where 0 were inserted
+                    # correctly with no orphan enrichment).
+                    inserted_names = [r.company_name for r in results[:inserted]]
+                    q = (
+                        select(Prospect)
+                        .where(Prospect.company_name.in_(inserted_names))
+                        .order_by(desc(Prospect.created_at))
+                        .limit(inserted)
+                    )
+                    new_prospects = (await db.execute(q)).scalars().all()
+                    for p in new_prospects:
+                        try:
+                            enrich_prospect_task.delay(str(p.id))
+                        except Exception as e:  # noqa: BLE001
+                            logger.debug(
+                                "Enqueue analysis for %s failed: %s", p.id, e
+                            )
+                except Exception as e:  # noqa: BLE001
+                    logger.debug("Auto-enqueue analysis batch failed: %s", e)
+
             return inserted
         except ScraperError as e:
             job.status = "failed"
