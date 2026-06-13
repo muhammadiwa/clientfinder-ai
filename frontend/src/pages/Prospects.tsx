@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Search, Filter, MoreHorizontal, ExternalLink, Plus } from "lucide-react";
+import { Search, Filter, MoreHorizontal, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
 import { useProspects } from "@/hooks/useProspects";
-import type { ProspectGrade, ProspectStatus } from "@/types";
+import type { ProspectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
 const STATUS_FILTERS: { label: string; value: ProspectStatus | "all" }[] = [
