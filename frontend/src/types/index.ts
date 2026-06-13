@@ -87,3 +87,102 @@ export interface ScrapingJobListResponse {
   items: ScrapingJob[];
   total: number;
 }
+
+// --- T6 Outreach module ---
+
+export type MessageChannel = "email" | "whatsapp" | "threads";
+export type MessageStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "scheduled"
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "opened"
+  | "clicked"
+  | "replied"
+  | "bounced"
+  | "failed"
+  | "rejected";
+export type MessageDirection = "outbound" | "inbound";
+
+export interface Message {
+  id: string;
+  prospect_id: string;
+  channel: MessageChannel;
+  direction: MessageDirection;
+  subject: string | null;
+  body: string;
+  status: MessageStatus;
+  scheduled_at: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  replied_at: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  error_message: string | null;
+  external_id: string | null;
+  extra_metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageListResponse {
+  items: Message[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+// --- T6 Templates (T6 Group 3) ---
+
+export interface Template {
+  id: string;
+  name: string;
+  channel: MessageChannel;
+  category: string | null;
+  subject: string | null;
+  body: string;
+  variables: string[];
+  is_active: boolean;
+  usage_count: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TemplateListResponse {
+  items: Template[];
+  total: number;
+}
+
+// --- T6 Sequences (T6 Group 3) ---
+
+export interface SequenceStep {
+  order: number;
+  channel: MessageChannel;
+  template_id?: string | null;
+  day_offset: number;
+  conditions?: Record<string, unknown>;
+}
+
+export interface Sequence {
+  id: string;
+  name: string;
+  description: string | null;
+  steps: SequenceStep[];
+  is_active: boolean;
+  target_grade: string[] | null;
+  target_source: string[] | null;
+  target_industry: string[] | null;
+  daily_send_cap: number;
+  created_by: string | null;
+}
+
+export interface SequenceListResponse {
+  items: Sequence[];
+  total: number;
+}
