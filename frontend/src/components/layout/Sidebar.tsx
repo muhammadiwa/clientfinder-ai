@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Users,
   KanbanSquare,
-  Settings,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,7 +11,8 @@ const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/prospects", label: "Prospects", icon: Users },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-  { to: "/settings", label: "Settings", icon: Settings },
+  // Settings moved to Topbar avatar dropdown (PR #23 audit fix)
+  // — single source of truth, less sidebar clutter
 ];
 
 /**
