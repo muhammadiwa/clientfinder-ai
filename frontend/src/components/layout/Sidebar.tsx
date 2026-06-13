@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/scout", label: "Scout", icon: Sparkles },
   { to: "/prospects", label: "Prospects", icon: Users },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   // Settings moved to Topbar avatar dropdown (PR #23 audit fix)
