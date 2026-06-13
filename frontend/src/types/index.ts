@@ -138,6 +138,23 @@ export interface MessageListResponse {
   pages: number;
 }
 
+/** Counts of messages per status — drives the hero KPI cards. */
+export interface OutreachStats {
+  draft: number;
+  pending_approval: number;
+  approved: number;
+  scheduled: number;
+  sending: number;
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  failed: number;
+  rejected: number;
+}
+
 // --- T6 Templates (T6 Group 3) ---
 
 export interface Template {
