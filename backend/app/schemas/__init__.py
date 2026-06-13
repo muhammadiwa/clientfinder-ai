@@ -8,6 +8,12 @@ from app.schemas.prospect import (
     ProspectOut,
     ProspectUpdate,
 )
+from app.schemas.scraping import (
+    ScrapingJobCreate,
+    ScrapingJobListResponse,
+    ScrapingJobOut,
+    ScrapingPresetOut,
+)
 from app.schemas.user import UserCreate, UserInDB, UserOut, UserUpdate
 
 __all__ = [
@@ -23,4 +29,8 @@ __all__ = [
     "ProspectListResponse",
     "ProspectOut",
     "ProspectUpdate",
+    "ScrapingJobCreate",
+    "ScrapingJobListResponse",
+    "ScrapingJobOut",
+    "ScrapingPresetOut",
 ]
