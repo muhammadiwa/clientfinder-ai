@@ -1,4 +1,4 @@
-import { Plus, Building2, MapPin } from "lucide-react";
+import { Plus, Building2, MapPin, Inbox, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Card } from "@/components/ui/card";
@@ -46,10 +46,18 @@ export function PipelinePage() {
             {data?.total ?? 0} prospects across {STAGES.length} stages
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4" />
-          New prospect
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/prospects">
+              <Sparkles className="h-4 w-4" />
+              Find prospects
+            </Link>
+          </Button>
+          <Button disabled title="Manual add coming in T4">
+            <Plus className="h-4 w-4" />
+            New prospect
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-x-auto pb-4">
@@ -77,11 +85,15 @@ export function PipelinePage() {
                       </span>
                     </div>
                     <Button
+                      asChild
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                      title={`Add prospect to ${stage.label}`}
                     >
-                      <Plus className="h-3.5 w-3.5" />
+                      <Link to="/prospects">
+                        <Plus className="h-3.5 w-3.5" />
+                      </Link>
                     </Button>
                   </div>
 
@@ -92,9 +104,10 @@ export function PipelinePage() {
                         <Skeleton className="h-24" />
                       </>
                     ) : stageProspects.length === 0 ? (
-                      <div className="h-24 rounded-lg border border-dashed border-border/50 flex items-center justify-center">
+                      <div className="h-24 rounded-lg border border-dashed border-border/50 flex flex-col items-center justify-center text-center px-2">
+                        <Inbox className="h-4 w-4 text-muted-foreground/50 mb-1" />
                         <p className="text-xs text-muted-foreground">
-                          Drop prospects here
+                          No prospects in {stage.label.toLowerCase()}
                         </p>
                       </div>
                     ) : (
