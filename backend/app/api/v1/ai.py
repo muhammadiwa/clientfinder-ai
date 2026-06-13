@@ -75,6 +75,7 @@ async def generate_hooks_batch(
 async def ai_status_endpoint(current_user: CurrentUser) -> dict:
     """Check whether the LLM is configured (frontend polling)."""
     from app.core.config import settings
+    from app.services.llm import get_active_providers
 
     primary_configured = bool(
         settings.llm_primary_api_key
@@ -84,8 +85,10 @@ async def ai_status_endpoint(current_user: CurrentUser) -> dict:
         settings.llm_fallback_api_key
         and not settings.llm_fallback_api_key.startswith("PLACEHOLDER")
     )
+    providers = get_active_providers()
+    any_configured = any(p["configured"] for p in providers)
     return {
-        "available": primary_configured or fallback_configured,
+        "available": any_configured,
         "primary": {
             "provider": settings.llm_primary_provider,
             "model": settings.llm_primary_model,
@@ -96,6 +99,7 @@ async def ai_status_endpoint(current_user: CurrentUser) -> dict:
             "model": settings.llm_fallback_model,
             "configured": fallback_configured,
         },
+        "providers": providers,
     }
 
 
