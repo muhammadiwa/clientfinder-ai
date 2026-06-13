@@ -278,10 +278,11 @@ async def get_prospect_detail(
     db: DB,
 ) -> dict[str, Any]:
     """
-    Get full prospect detail including tech stack, pain points, and
-    lead score breakdown (T5 — for the prospect detail page).
+    Get full prospect detail including tech stack, pain points,
+    lead score breakdown, AND generated hooks (T5 — for the
+    prospect detail page).
     """
-    from app.models.lead import LeadScore
+    from app.models.lead import Hook, LeadScore
     from app.models.prospect import PainPoint, TechStack
 
     prospect = (
@@ -321,6 +322,18 @@ async def get_prospect_detail(
             select(LeadScore).where(LeadScore.prospect_id == prospect_id)
         )
     ).scalar_one_or_none()
+
+    hooks = (
+        (
+            await db.execute(
+                select(Hook)
+                .where(Hook.prospect_id == prospect_id)
+                .order_by(Hook.confidence.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     return {
         "prospect": ProspectOut.model_validate(prospect).model_dump(mode="json"),
@@ -365,4 +378,15 @@ async def get_prospect_detail(
             if score
             else None
         ),
+        "hooks": [
+            {
+                "id": str(h.id),
+                "hook_text": h.hook_text,
+                "audit_finding": h.audit_finding,
+                "recommended_service": h.recommended_service,
+                "confidence": float(h.confidence) if h.confidence is not None else 0.5,
+                "is_used": h.is_used,
+            }
+            for h in hooks
+        ],
     }
