@@ -76,6 +76,8 @@ services:
       dockerfile: Dockerfile
     container_name: cf-backend
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
@@ -98,6 +100,9 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend/app:/app/app:ro
+      - ./backend/alembic:/app/alembic:rw
+      - ./backend/alembic.ini:/app/alembic.ini:ro
+      - ./backend/scripts:/app/scripts:ro
     networks:
       - cf-net
     security_opt:
