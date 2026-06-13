@@ -180,3 +180,59 @@ def build_pain_analysis_prompt(
         existing_pains=_format_pains(existing_pains),
     )
     return PAIN_ANALYSIS_SYSTEM, user
+
+
+# --- Outreach email (T6 prep) ---
+
+OUTREACH_SYSTEM = (
+    "Anda adalah copywriter untuk pesan outreach B2B Indonesia. "
+    "Tulis pesan yang sopan, ringkas, tidak salesy, dan value-driven. "
+    "Bahasa Indonesia yang natural dan profesional."
+)
+
+OUTREACH_EMAIL_USER_TEMPLATE = """\
+# PROSPECT
+
+{company_name}, {industry}, {location}
+
+# HOOK YANG DIPILIH
+
+{hook_text}
+
+# PAIN POINTS
+
+{pains_block}
+
+# TUGAS
+
+Tulis email outreach (subject + body) berdasarkan hook di atas.
+- Subject: max 60 karakter, jangan clickbait
+- Body: max 150 kata, paragraf pendek, 1 CTA
+- Tone: santai tapi profesional (seperti peer yang punya insight)
+- Akhiri dengan signature: "Salam,\nTim ClientFinder"
+
+# OUTPUT (JSON only)
+
+{{
+  "subject": "...",
+  "body": "..."
+}}
+"""
+
+
+def build_outreach_email_prompt(
+    *,
+    company_name: str,
+    industry: str | None,
+    location: str | None,
+    hook_text: str,
+    pains: list[dict],
+) -> tuple[str, str]:
+    user = OUTREACH_EMAIL_USER_TEMPLATE.format(
+        company_name=company_name,
+        industry=industry or "tidak diketahui",
+        location=location or "tidak diketahui",
+        hook_text=hook_text,
+        pains_block=_format_pains(pains),
+    )
+    return OUTREACH_SYSTEM, user
