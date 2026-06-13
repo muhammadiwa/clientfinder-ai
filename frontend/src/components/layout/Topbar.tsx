@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Sparkles,
   LogOut,
-  User as UserIcon,
   Settings,
   ShieldCheck,
 } from "lucide-react";

@@ -82,7 +82,6 @@ export function DropdownMenu({
 interface MenuItemProps {
   children: ReactNode;
   onClick?: () => void;
-  asChild?: boolean;
   href?: string;
   to?: string;
   variant?: "default" | "destructive";
@@ -95,7 +94,6 @@ import { Link } from "react-router-dom";
 export function MenuItem({
   children,
   onClick,
-  asChild = false,
   href,
   to,
   variant = "default",
