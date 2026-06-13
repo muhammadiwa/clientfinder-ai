@@ -22,6 +22,7 @@ from sqlalchemy import desc, func, select
 from app.core.database import DB
 from app.core.deps import CurrentUser
 from app.models.outreach import Message
+from app.models.prospect import Prospect
 from app.schemas.outreach import (
     MessageApprovalRequest,
     MessageCreate,
@@ -29,6 +30,7 @@ from app.schemas.outreach import (
     MessageListResponse,
     MessageOut,
     MessageUpdate,
+    OutreachStatsOut,
 )
 from app.services.outreach import (
     approve_message,
@@ -40,6 +42,31 @@ from app.services.llm import LLMError, complete
 from app.services.prompts import build_outreach_email_prompt
 
 router = APIRouter(prefix="/outreach", tags=["outreach"])
+
+
+@router.get("/stats", response_model=OutreachStatsOut)
+async def get_outreach_stats(
+    current_user: CurrentUser,
+    db: DB,
+) -> OutreachStatsOut:
+    """Counts of messages per status (for the hero KPI cards).
+
+    Cheap GROUP BY query — no joins, no prospect lookups.
+    """
+    q = select(Message.status, func.count(Message.id)).group_by(
+        Message.status
+    )
+    rows = (await db.execute(q)).all()
+    counts = {row[0]: int(row[1]) for row in rows}
+    # Normalize all 13 statuses (default 0)
+    all_statuses = [
+        "draft", "pending_approval", "approved", "scheduled",
+        "sending", "sent", "delivered", "opened", "clicked",
+        "replied", "bounced", "failed", "rejected",
+    ]
+    return OutreachStatsOut(
+        **{s: counts.get(s, 0) for s in all_statuses},
+    )
 
 
 @router.post(
@@ -90,12 +117,14 @@ async def list_messages(
     status_filter: str | None = Query(None, alias="status"),
     channel: str | None = None,
     prospect_id: UUID | None = None,
+    prospect_grade: str | None = Query(None, description="Filter by prospect's quality_grade (A/B/C/D)"),
     needs_approval: bool = False,
 ) -> MessageListResponse:
     """List messages with filters.
 
     `needs_approval=true` returns only messages in
     pending_approval status (the R10 review queue).
+    `prospect_grade=A|B|C|D` filters by the linked prospect's grade.
     """
     q = select(Message)
     count_q = select(func.count(Message.id))
@@ -112,6 +141,13 @@ async def list_messages(
     if prospect_id:
         q = q.where(Message.prospect_id == prospect_id)
         count_q = count_q.where(Message.prospect_id == prospect_id)
+    if prospect_grade:
+        q = q.join(Prospect, Prospect.id == Message.prospect_id).where(
+            Prospect.quality_grade == prospect_grade
+        )
+        count_q = count_q.join(
+            Prospect, Prospect.id == Message.prospect_id
+        ).where(Prospect.quality_grade == prospect_grade)
 
     total = (await db.execute(count_q)).scalar() or 0
     offset = (page - 1) * per_page

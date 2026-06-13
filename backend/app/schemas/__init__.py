@@ -21,6 +21,7 @@ from app.schemas.outreach import (
     MessageListResponse,
     MessageOut,
     MessageUpdate,
+    OutreachStatsOut,
 )
 from app.schemas.templates import (
     TemplateCreate,
@@ -59,6 +60,7 @@ __all__ = [
     "MessageListResponse",
     "MessageOut",
     "MessageUpdate",
+    "OutreachStatsOut",
     "TemplateCreate",
     "TemplateListResponse",
     "TemplateOut",

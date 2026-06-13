@@ -93,3 +93,21 @@ class MessageGenerateRequest(BaseModel):
     hook_id: UUID
     channel: MessageChannel = "email"
     template_id: UUID | None = None
+
+
+class OutreachStatsOut(BaseModel):
+    """Counts of messages per status — drives the hero KPI cards."""
+
+    draft: int = 0
+    pending_approval: int = 0
+    approved: int = 0
+    scheduled: int = 0
+    sending: int = 0
+    sent: int = 0
+    delivered: int = 0
+    opened: int = 0
+    clicked: int = 0
+    replied: int = 0
+    bounced: int = 0
+    failed: int = 0
+    rejected: int = 0
