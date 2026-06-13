@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1 import (
     ai,
+    analytics,
     auth,
     outreach,
     prospects,
@@ -66,6 +67,7 @@ app.include_router(ai.router, prefix="/api/v1")
 app.include_router(outreach.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
 app.include_router(sequences.router, prefix="/api/v1")
+app.include_router(analytics.router, prefix="/api/v1")
 
 
 @app.get("/")
