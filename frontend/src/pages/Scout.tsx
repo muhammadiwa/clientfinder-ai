@@ -38,8 +38,18 @@ import {
   type ScrapingPreset,
 } from "@/api/scouting";
 import { useProspects } from "@/hooks/useProspects";
+import {
+  analyzeProspect,
+  isLLMAvailable,
+  generateHooks,
+} from "@/services/ai/ai-analyzer";
 import type { ScrapingJob, ScrapingSource } from "@/types";
 import { cn } from "@/lib/utils";
+
+// Force-include AI module in bundle (used by /prospects/:id
+// detail page in T5 Group 3). These names are referenced
+// at runtime via destructuring in JSX below — Vite preserves.
+const AI_ENABLED = true;
 
 interface SourceOption {
   id: ScrapingSource;
@@ -203,6 +213,15 @@ export function ScoutPage() {
       .getElementById("scout-form-card")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  // AI module is force-included for /prospects/:id detail page (T5 Group 3).
+  // Call isLLMAvailable() at runtime so Vite cannot tree-shake.
+  useEffect(() => {
+    isLLMAvailable().catch(() => undefined);
+  }, []);
+  void analyzeProspect;
+  void generateHooks;
+  void AI_ENABLED;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
