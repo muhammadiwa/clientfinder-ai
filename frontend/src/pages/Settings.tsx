@@ -163,24 +163,31 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Danger zone (placeholder) */}
-      <Card className="border-rose-200">
+      {/* Danger zone (T8) */}
+      <Card className="border-rose-200/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-rose-700">
+          <CardTitle className="flex items-center gap-2 text-rose-700/70">
             <AlertTriangle className="h-4 w-4" />
             Danger zone
           </CardTitle>
           <CardDescription>Irreversible actions</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between p-4 rounded-lg border border-rose-200 bg-rose-50/30">
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
             <div>
-              <p className="font-medium text-sm">Delete account</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="font-medium text-sm text-muted-foreground">
+                Delete account
+              </p>
+              <p className="text-xs text-muted-foreground/70">
                 Permanently delete your account and all associated data
               </p>
             </div>
-            <Button variant="outline" size="sm" disabled className="border-rose-200 text-rose-700">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              title="Available in T8 (production hardening)"
+            >
               Delete account
             </Button>
           </div>
