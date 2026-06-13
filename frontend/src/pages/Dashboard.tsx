@@ -147,7 +147,6 @@ export function DashboardPage() {
               value={stats.hot}
               description="Score 80+"
               icon={<Star className="h-4 w-4" />}
-              delta={{ value: 12, positive: true, label: "vs last week" }}
             />
             <StatCard
               title="Contacted"
@@ -222,11 +221,21 @@ export function DashboardPage() {
                   <Tooltip
                     cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }}
                     contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
+                      backgroundColor: "hsl(var(--popover))",
                       border: "1px solid hsl(var(--border))",
-                      borderRadius: "0.5rem",
+                      borderRadius: "0.625rem",
                       fontSize: "12px",
+                      padding: "0.5rem 0.75rem",
+                      boxShadow:
+                        "0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
+                      color: "hsl(var(--popover-foreground))",
                     }}
+                    labelStyle={{
+                      fontWeight: 600,
+                      marginBottom: 4,
+                      textTransform: "capitalize",
+                    }}
+                    itemStyle={{ padding: 0 }}
                   />
                   <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                     {chartData.map((entry) => (
