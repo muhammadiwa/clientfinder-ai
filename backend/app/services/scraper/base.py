@@ -24,6 +24,7 @@ class ScrapedResult:
     email: str | None = None
     location_city: str | None = None
     location_province: str | None = None
+    location_address: str | None = None
     description: str | None = None
     source_url: str | None = None
     source: str = ""
@@ -38,10 +39,14 @@ class ScrapedResult:
             "email": self.email,
             "location_city": self.location_city,
             "location_province": self.location_province,
+            # location_address is a T4.5+ field; not yet on Prospect model,
+            # so we stash it in raw_data for v1.
             "description": self.description,
             "source_url": self.source_url,
             "source": self.source,
-            "raw_data": self.extra,
+            "raw_data": {**self.extra, "location_address": self.location_address}
+            if self.location_address
+            else self.extra,
             "status": "new",
         }
 
