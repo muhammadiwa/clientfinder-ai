@@ -1,5 +1,10 @@
-import { useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
 import {
   Search,
   Bell,
@@ -34,10 +39,11 @@ const routeLabels: Record<string, string> = {
 export function Topbar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated, user, clearAuth } = useAuthStore();
   const me = useMe(isAuthenticated);
   const logout = useLogout();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
 
   useEffect(() => {
     if (isAuthenticated && me.isError) {
@@ -123,17 +129,28 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Search (lg+ only) */}
-        <div className="hidden lg:flex relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Search (lg+ only) — navigates to /prospects with search param */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (search.trim()) {
+              navigate(`/prospects?search=${encodeURIComponent(search.trim())}`);
+            } else {
+              navigate("/prospects");
+            }
+          }}
+          className="hidden lg:flex relative"
+        >
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             type="search"
-            placeholder="Search…"
+            placeholder="Search prospects…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search prospects"
             className="h-9 w-64 pl-9 pr-3 rounded-md border border-input bg-background/50 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 placeholder:text-muted-foreground transition-colors"
           />
-        </div>
+        </form>
 
         {/* Notifications (placeholder) */}
         <Button

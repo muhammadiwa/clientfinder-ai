@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Search, Filter, MoreHorizontal, Plus } from "lucide-react";
+import { useSearchParams, Link } from "react-router-dom";
+import { Search, Filter, MoreHorizontal, Plus, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,6 +10,16 @@ import { StatusPill, GradePill } from "@/components/ui/status-pill";
 import { useProspects } from "@/hooks/useProspects";
 import type { ProspectStatus } from "@/types";
 import { cn } from "@/lib/utils";
+
+/** Get up to 2 letters from company name (e.g., "Klinik Gigi" → "KG") */
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 const STATUS_FILTERS: { label: string; value: ProspectStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -23,9 +34,12 @@ const STATUS_FILTERS: { label: string; value: ProspectStatus | "all" }[] = [
 const PAGE_SIZE = 20;
 
 export function ProspectsPage() {
-  const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
   const [statusFilter, setStatusFilter] = useState<ProspectStatus | "all">("all");
   const [page, setPage] = useState(1);
+
+  const search = searchParams.get("search") ?? "";
 
   const { data, isLoading, isError } = useProspects({
     page,
@@ -45,21 +59,33 @@ export function ProspectsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setSearchParams(
+                searchInput
+                  ? { search: searchInput }
+                  : {},
+                { replace: true },
+              );
+              setPage(1);
+            }}
+            className="relative"
+          >
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Search by company, email..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
+              placeholder="Search by company, email…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              aria-label="Search prospects"
               className="h-10 pl-9 w-64"
             />
-          </div>
-          <Button>
-            <Plus className="h-4 w-4" />
-            New search
+          </form>
+          <Button asChild>
+            <Link to="/prospects?new=1">
+              <Plus className="h-4 w-4" />
+              New search
+            </Link>
           </Button>
         </div>
       </div>
@@ -172,13 +198,14 @@ export function ProspectsPage() {
                   >
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-md bg-gradient-to-br from-violet-500/20 to-indigo-500/10 border border-violet-200/50 flex items-center justify-center text-violet-700 font-semibold text-sm">
-                          {p.company_name.charAt(0).toUpperCase()}
+                        <div className="h-8 w-8 rounded-md bg-gradient-to-br from-violet-500/20 to-indigo-500/10 border border-violet-200/50 flex items-center justify-center text-violet-700 font-semibold text-[11px] flex-shrink-0">
+                          {getInitials(p.company_name) || "?"}
                         </div>
-                        <div>
-                          <p className="font-medium">{p.company_name}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{p.company_name}</p>
                           {p.email && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                              <Mail className="h-2.5 w-2.5" />
                               {p.email}
                             </p>
                           )}
