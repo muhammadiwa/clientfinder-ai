@@ -21,7 +21,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PipelineFunnel } from "@/components/charts/PipelineFunnel";
 import { GradeDonut } from "@/components/charts/GradeDonut";
 import { useProspects } from "@/hooks/useProspects";
-import type { Prospect, ProspectStatus } from "@/types";
+import type { Prospect } from "@/types";
 
 // Per playbook §1: status colors
 const FUNNEL_STAGES = [
