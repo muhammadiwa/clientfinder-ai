@@ -2,14 +2,28 @@
 
 > Catatan singkat biar kerjaan tetap rapi dan gak ganggu `main`.
 
+## ⚠️ ATURAN KRITIS: Target PR SELALU `develop`
+
+```
+✅ PR → develop
+❌ PR → main    ← JANGAN, kecuali ini PR release
+```
+
+**Semua PR dari branch `feature/*` HARUS target `develop`, BUKAN `main`.**
+- `develop` = integration branch (semua kerjaan baru masuk sini dulu)
+- `main` = production-ready code only
+- `main` di-update HANYA via PR dari `develop` saat release-ready
+
+> 📌 **Historical note:** PR #5 dan #6 (Jun 2026) accidentally merged ke main, langsung di-revert + dipindah ke develop. Workflow ini enforced dengan warning ini dan akan ditambah branch protection di GitHub (T8).
+
 ## Branch Strategy
 
 Kita pakai **Gitflow-lite** untuk project ini:
 
 ```
-main              ← production-ready code only (protected)
+main              ← production-ready code only (PROTECTED)
   │
-  └─ develop     ← integration branch
+  └─ develop     ← integration branch (semua PR target sini)
        │
        ├─ feature/<name>   ← per-module kerja
        ├─ feature/<name>
@@ -18,9 +32,10 @@ main              ← production-ready code only (protected)
 
 ### Aturan
 - ❌ **JANGAN** commit langsung ke `main` atau `develop`
+- ❌ **JANGAN** bikin PR dari `feature/*` ke `main` (harus ke `develop`)
 - ✅ Selalu kerja di branch `feature/<nama-phase>` atau `fix/<nama-bug>`
-- ✅ Merge ke `develop` setelah phase selesai & tested
-- ✅ `develop` di-promote ke `main` saat release-ready (via PR)
+- ✅ PR dari `feature/*` SELALU target `develop`
+- ✅ Merge ke `main` HANYA via PR dari `develop` setelah semua phase di phase itu selesai & tested
 - ✅ Commit message pakai **Conventional Commits**
 
 ## Naming Branch
@@ -93,6 +108,7 @@ git commit -m "feat(T2-backend): add /auth/login endpoint"
 git push -u origin feature/t2-user-model
 
 # 5. Buat PR ke develop di GitHub
+# ⚠️ PASTIKAN base branch = develop, BUKAN main!
 
 # 6. Setelah merge, balik ke develop & cleanup
 git checkout develop
@@ -115,7 +131,7 @@ make health
 # Merge ke main via PR
 # (atau langsung jika solo & tested)
 git checkout main
-git merge --no-ff develop
+git merge --ff-only develop
 git tag -a v0.2.0 -m "Release: T2 backend core"
 git push origin main --tags
 ```
@@ -125,12 +141,6 @@ git push origin main --tags
 Set di GitHub Settings → Branches:
 - `main`: require PR review, no direct push
 - `develop`: require PR atau admin only
-
-## Tools Pendukung
-
-- **Pre-commit hook** (opsional): auto-run lint sebelum commit
-- **Conventional Commits linter**: enforce format
-- **Branch name validator**: warn kalau nama不符合 pattern
 
 Akan di-setup di T8 (production hardening).
 
