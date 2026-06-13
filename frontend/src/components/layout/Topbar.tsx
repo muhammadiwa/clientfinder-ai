@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Link,
   useNavigate,
@@ -15,7 +15,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth";
