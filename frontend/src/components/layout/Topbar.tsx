@@ -1,11 +1,14 @@
 import { useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
-  LogOut,
   Search,
   Bell,
   ChevronRight,
   Sparkles,
+  LogOut,
+  User as UserIcon,
+  Settings,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
@@ -14,15 +17,13 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth";
 import { useMe, useLogout } from "@/hooks/useAuth";
 import { MobileNav } from "./MobileNav";
+import {
+  DropdownMenu,
+  MenuHeader,
+  MenuItem,
+  MenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-
-/**
- * Topbar — per UI/UX Playbook §7.6
- * - Glass effect (backdrop-blur + bg-card/80)
- * - Subtle border-b
- * - Mobile: hamburger + brand
- * - Desktop: breadcrumb (left) + search + notifications + user menu (right)
- */
 
 const routeLabels: Record<string, string> = {
   dashboard: "Dashboard",
@@ -58,13 +59,17 @@ export function Topbar() {
     }
   };
 
-  // Build breadcrumb from current path
   const pathSegments = location.pathname.split("/").filter(Boolean);
   const breadcrumb = pathSegments.map((seg, idx) => ({
     label: routeLabels[seg] ?? seg,
     path: "/" + pathSegments.slice(0, idx + 1).join("/"),
     isLast: idx === pathSegments.length - 1,
   }));
+
+  const displayEmail = me.data?.email ?? user?.email ?? "";
+  const displayRole = me.data?.role ?? user?.role ?? "user";
+  const displayInitial = (displayEmail[0] ?? "U").toUpperCase();
+  const displayName = me.data?.full_name ?? displayEmail.split("@")[0] ?? "User";
 
   return (
     <header
@@ -77,10 +82,7 @@ export function Topbar() {
         <MobileNav />
 
         {/* Mobile brand */}
-        <Link
-          to="/dashboard"
-          className="flex md:hidden items-center gap-2"
-        >
+        <Link to="/dashboard" className="flex md:hidden items-center gap-2">
           <div className="h-7 w-7 rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white">
             <Sparkles className="h-4 w-4" />
           </div>
@@ -122,7 +124,7 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Search (desktop only) */}
+        {/* Search (lg+ only) */}
         <div className="hidden lg:flex relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
@@ -145,22 +147,59 @@ export function Topbar() {
           <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-rose-500" />
         </Button>
 
-        {/* User email + sign out */}
+        {/* User menu (avatar + dropdown) */}
         {isAuthenticated ? (
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-sm text-muted-foreground hidden md:inline">
-              {me.data?.email ?? user?.email}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              disabled={logout.isPending}
-              aria-label="Sign out"
+          <DropdownMenu
+            align="right"
+            width="w-60"
+            trigger={
+              <button
+                type="button"
+                aria-label="User menu"
+                className={cn(
+                  "h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold text-sm",
+                  "bg-gradient-to-br from-violet-500 to-indigo-600",
+                  "shadow-glow-sm",
+                  "transition-all duration-150 ease-out-expo",
+                  "hover:scale-105 hover:shadow-glow active:scale-95",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                )}
+              >
+                {displayInitial}
+              </button>
+            }
+          >
+            <MenuHeader>
+              <p className="text-sm font-medium text-foreground truncate">
+                {displayName}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {displayEmail}
+              </p>
+              <p className="text-[10px] text-muted-foreground capitalize mt-0.5 flex items-center gap-1">
+                <ShieldCheck className="h-2.5 w-2.5" />
+                {displayRole}
+              </p>
+            </MenuHeader>
+
+            <MenuItem
+              to="/settings"
+              icon={<Settings className="h-4 w-4" />}
             >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+              Settings
+            </MenuItem>
+
+            <MenuSeparator />
+
+            <MenuItem
+              onClick={handleLogout}
+              variant="destructive"
+              icon={<LogOut className="h-4 w-4" />}
+              disabled={logout.isPending}
+            >
+              {logout.isPending ? "Signing out…" : "Sign out"}
+            </MenuItem>
+          </DropdownMenu>
         ) : (
           <Button asChild variant="ghost" size="sm">
             <Link to="/login">Sign in</Link>

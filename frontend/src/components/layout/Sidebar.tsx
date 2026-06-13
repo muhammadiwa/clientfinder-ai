@@ -7,7 +7,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/stores/auth";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -18,18 +17,20 @@ const navItems = [
 
 /**
  * Sidebar — per UI/UX Playbook §7.6
- * - Dark slate-900 with subtle vertical gradient
- * - Brand block: gradient Sparkles + "ClientFinder" with subtle hover scale
- * - Nav items: gradient bg for active, slate-800/50 hover for inactive
- * - Footer: user profile block with email + role
+ *
+ * Fixes (T9 audit):
+ * - Removed user footer (avatar + email + role). Moved user
+ *   identity to Topbar avatar dropdown (single source of truth).
+ * - h-screen (was min-h-screen) ensures aside is exactly
+ *   viewport height, so sticky top-0 actually sticks.
+ * - flex-1 + overflow-y-auto on nav lets the nav itself scroll
+ *   if many items are added in future (T6 sequences, etc.).
  */
 export function Sidebar() {
-  const user = useAuthStore((s) => s.user);
-
   return (
-    <aside className="hidden md:flex w-60 bg-sidebar-gradient text-slate-100 min-h-screen sticky top-0 flex-col border-r border-slate-800/50">
+    <aside className="hidden md:flex w-60 bg-sidebar-gradient text-slate-100 h-screen sticky top-0 flex-col border-r border-slate-800/50">
       {/* Brand block */}
-      <div className="p-5 border-b border-slate-800/50">
+      <div className="p-5 border-b border-slate-800/50 flex-shrink-0">
         <NavLink
           to="/dashboard"
           className="flex items-center gap-2.5 group"
@@ -48,8 +49,8 @@ export function Sidebar() {
         </NavLink>
       </div>
 
-      {/* Nav items */}
-      <nav className="flex-1 p-3 space-y-1">
+      {/* Nav (scrollable if many items) */}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -78,23 +79,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
-      {/* User footer */}
-      {user && (
-        <div className="p-3 border-t border-slate-800/50">
-          <div className="flex items-center gap-3 p-2 rounded-lg">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-medium text-sm shadow-glow-sm">
-              {(user.email?.[0] ?? "U").toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
-                {user.email}
-              </p>
-              <p className="text-xs text-slate-400 capitalize">{user.role}</p>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
   );
 }
