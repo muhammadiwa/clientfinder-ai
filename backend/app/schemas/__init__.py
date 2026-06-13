@@ -14,6 +14,14 @@ from app.schemas.scraping import (
     ScrapingJobOut,
     ScrapingPresetOut,
 )
+from app.schemas.outreach import (
+    MessageApprovalRequest,
+    MessageCreate,
+    MessageGenerateRequest,
+    MessageListResponse,
+    MessageOut,
+    MessageUpdate,
+)
 from app.schemas.user import UserCreate, UserInDB, UserOut, UserUpdate
 
 __all__ = [
@@ -33,4 +41,10 @@ __all__ = [
     "ScrapingJobListResponse",
     "ScrapingJobOut",
     "ScrapingPresetOut",
+    "MessageApprovalRequest",
+    "MessageCreate",
+    "MessageGenerateRequest",
+    "MessageListResponse",
+    "MessageOut",
+    "MessageUpdate",
 ]
