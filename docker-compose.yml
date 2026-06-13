@@ -246,6 +246,34 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  openwa-proxy:
+    image: alpine/socat:1.7.4.4-r0
+    container_name: cf-openwa-proxy
+    restart: unless-stopped
+    entrypoint: []
+    command:
+      - socat
+      - -d
+      - -d
+      - TCP-LISTEN:5785,fork,reuseaddr
+      - TCP:openwa-api:2785
+    depends_on:
+      - backend
+    networks:
+      cf-net:
+        aliases:
+          - openwa-proxy
+      openwa-network:
+        aliases:
+          - cf-openwa-proxy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   postgres_data:
     driver: local
@@ -258,3 +286,6 @@ networks:
   cf-net:
     driver: bridge
     name: cf-net
+  openwa-network:
+    external: true
+    name: openwa-network
