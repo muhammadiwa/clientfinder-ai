@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useProspects } from "@/hooks/useProspects";
 import type { Prospect, ProspectStatus } from "@/types";
 
@@ -185,13 +186,15 @@ export function DashboardPage() {
             {isLoading ? (
               <Skeleton className="h-72 w-full" />
             ) : isError ? (
-              <EmptyChart
+              <EmptyState
+                className="h-72"
                 icon={<Activity className="h-5 w-5" />}
                 title="Could not load prospects"
                 description="Check your connection or sign in again"
               />
             ) : chartData.length === 0 ? (
-              <EmptyChart
+              <EmptyState
+                className="h-72 px-4"
                 icon={<Sparkles className="h-5 w-5" />}
                 title="No data yet"
                 description="Run a scout job in T4 to populate this chart"
@@ -258,7 +261,8 @@ export function DashboardPage() {
             {isLoading ? (
               <Skeleton className="h-72 w-full" />
             ) : gradeData.length === 0 ? (
-              <EmptyChart
+              <EmptyState
+                className="h-72"
                 icon={<TrendingUp className="h-5 w-5" />}
                 title="No grades yet"
                 description="Leads will be scored automatically"
@@ -320,7 +324,8 @@ export function DashboardPage() {
               ))}
             </div>
           ) : topProspects.length === 0 ? (
-            <EmptyChart
+            <EmptyState
+              className="py-12"
               icon={<Users className="h-5 w-5" />}
               title="No prospects yet"
               description="Run a scout job to discover businesses that match your ICP"
@@ -369,29 +374,6 @@ export function DashboardPage() {
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function EmptyChart({
-  icon,
-  title,
-  description,
-  action,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="h-72 flex flex-col items-center justify-center text-center px-4">
-      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-3">
-        {icon}
-      </div>
-      <p className="text-sm font-medium">{title}</p>
-      <p className="text-xs text-muted-foreground mt-1 max-w-xs">{description}</p>
-      {action}
     </div>
   );
 }

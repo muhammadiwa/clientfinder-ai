@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useProspects } from "@/hooks/useProspects";
 import type { ProspectStatus } from "@/types";
 import { cn } from "@/lib/utils";
