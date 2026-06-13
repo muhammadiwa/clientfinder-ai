@@ -5,6 +5,7 @@ import {
   KanbanSquare,
   Sparkles,
   Send,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ const navItems = [
   { to: "/prospects", label: "Prospects", icon: Users },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   { to: "/outreach", label: "Outreach", icon: Send },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
   // Settings moved to Topbar avatar dropdown (PR #23 audit fix)
   // — single source of truth, less sidebar clutter
 ];
