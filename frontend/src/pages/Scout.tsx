@@ -218,7 +218,7 @@ export function ScoutPage() {
       max_results: maxResults,
     };
     try {
-      const job = await createScrapingJob(payload);
+      await createScrapingJob(payload);
       toast.success(
         `Job started — ${sourceOpt.label} is searching for prospects…`,
       );
