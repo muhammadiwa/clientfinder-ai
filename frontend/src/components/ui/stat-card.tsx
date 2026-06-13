@@ -1,13 +1,15 @@
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Sparkline } from "@/components/charts/Sparkline";
 import type { ReactNode } from "react";
 
 /**
  * StatCard — per UI/UX Playbook §7.3
- * - Gradient left border (4px wide)
- * - Icon in muted circle
+ * - 4px gradient left border
+ * - Icon in rounded-lg muted circle
  * - Big number (text-3xl font-bold)
  * - Optional delta indicator
+ * - Optional sparkline (mini trend chart)
  */
 export interface StatCardProps {
   title: string;
@@ -19,6 +21,8 @@ export interface StatCardProps {
     label?: string;
     positive?: boolean;
   };
+  sparkline?: number[];
+  sparklineColor?: string;
   className?: string;
 }
 
@@ -28,6 +32,8 @@ export function StatCard({
   description,
   icon,
   delta,
+  sparkline,
+  sparklineColor,
   className,
 }: StatCardProps) {
   return (
@@ -43,10 +49,10 @@ export function StatCard({
           {icon}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-2">
         <div className="text-3xl font-bold tracking-tight num">{value}</div>
         {(delta || description) && (
-          <div className="flex items-center gap-1.5 text-xs mt-2">
+          <div className="flex items-center gap-1.5 text-xs">
             {delta && (
               <span
                 className={cn(
@@ -67,6 +73,17 @@ export function StatCard({
             {delta?.label && !description && (
               <span className="text-muted-foreground">{delta.label}</span>
             )}
+          </div>
+        )}
+        {/* Optional sparkline (visual trend) */}
+        {sparkline && sparkline.length >= 2 && (
+          <div
+            className={cn(
+              "h-8 -mx-2 -mb-2 mt-1 text-current",
+              sparklineColor || "text-violet-500",
+            )}
+          >
+            <Sparkline data={sparkline} />
           </div>
         )}
       </CardContent>

@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1 import auth, prospects
+from app.api.v1 import auth, prospects, scraping
 from app.core.config import settings
 from app.core.database import close_db, init_db
 
@@ -53,6 +53,7 @@ app.add_middleware(
 # Routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(prospects.router, prefix="/api/v1")
+app.include_router(scraping.router, prefix="/api/v1")
 
 
 @app.get("/")

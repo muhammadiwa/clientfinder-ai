@@ -30,4 +30,13 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=100,
     broker_connection_retry_on_startup=True,
+    # Route tasks to per-module queues so the worker processes
+    # them in order. Without this, tasks default to the celery
+    # default queue and our -Q scraping,analysis,outreach worker
+    # never picks them up.
+    task_routes={
+        "app.tasks.scraping.*": {"queue": "scraping"},
+        "app.tasks.analysis.*": {"queue": "analysis"},
+        "app.tasks.outreach.*": {"queue": "outreach"},
+    },
 )

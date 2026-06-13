@@ -47,8 +47,23 @@ COPY app/ /app/app/
 # Create non-root user with UID 1000 (matches typical host user for bind mounts)
 ARG UID=1000
 RUN groupadd -r appuser -g ${UID} && useradd -r -u ${UID} -g appuser appuser \
-    && mkdir -p /app/.sessions /app/logs \
-    && chown -R appuser:appuser /app
+    && mkdir -p /app/.sessions /app/logs /home/appuser/.cache \
+    && chown -R appuser:appuser /app /home/appuser \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+        libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
+        libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64 \
+        fonts-liberation libdbus-1-3 libxshmfence1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Playwright browsers in a path accessible by appuser.
+# /root has mode 700, so appuser can't traverse /root/.cache.
+# Use /home/appuser/.cache (owned by appuser) instead.
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/.cache/ms-playwright
+RUN mkdir -p /home/appuser/.cache/ms-playwright && \
+    playwright install chromium 2>&1 | tail -3 && \
+    chown -R appuser:appuser /home/appuser/.cache/ms-playwright
+
 USER appuser
 
 EXPOSE 8000

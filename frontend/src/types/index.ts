@@ -61,3 +61,29 @@ export interface ProspectListResponse {
   per_page: number;
   pages: number;
 }
+
+// --- T4 Scout module ---
+
+export type ScrapingSource = "google" | "maps" | "twitter" | "threads";
+export type ScrapingStatus = "pending" | "running" | "completed" | "failed";
+
+export interface ScrapingJob {
+  id: string;
+  source: ScrapingSource | string;
+  query: {
+    keywords: string;
+    location?: string | null;
+    max_results?: number;
+  };
+  status: ScrapingStatus | string;
+  prospects_found: number;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface ScrapingJobListResponse {
+  items: ScrapingJob[];
+  total: number;
+}
