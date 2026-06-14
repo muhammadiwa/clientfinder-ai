@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
+from app.core.config import settings
 from app.core.database import DB
 from app.core.deps import CurrentUser
 from app.core.security import (
@@ -280,6 +281,97 @@ async def enrich_prospect_endpoint(
             detail=summary.get("error", "enrichment failed"),
         )
     return summary
+
+
+# === T8.6 Homepage Enrichment endpoint ===
+
+@router.post("/{prospect_id}/refresh-contact")
+async def refresh_contact_endpoint(
+    prospect_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+) -> dict[str, Any]:
+    """
+    T8.6: re-fetch the prospect's homepage and extract phone, email,
+    address, social links. Idempotent — overwrites existing fields
+    if newer data is found (homepage is canonical per the spec).
+
+    Returns the enrichment summary with the updated fields so the
+    frontend can update the UI in place.
+    """
+    from app.services.scraper.base import ScrapedResult
+    from app.services.scraper.enricher import HomepageEnricher
+
+    prospect = (
+        await db.execute(
+            select(Prospect).where(
+                Prospect.id == prospect_id,
+                Prospect.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if not prospect:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Prospect {prospect_id} not found",
+        )
+    if not prospect.website:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Prospect has no website to fetch",
+        )
+
+    # Wrap prospect as a ScrapedResult, run enricher, unwrap back
+    result = ScrapedResult(
+        company_name=prospect.company_name,
+        website=prospect.website,
+        phone=prospect.phone,
+        email=prospect.email,
+        location_address=(prospect.raw_data or {}).get("location_address"),
+        source=prospect.source or "manual",
+        source_url=prospect.source_url,
+        description=prospect.description,
+        extra=dict(prospect.raw_data or {}),
+    )
+    try:
+        enricher = HomepageEnricher(
+            page_timeout_s=settings.scout_enrichment_page_timeout_s,
+            batch_timeout_s=settings.scout_enrichment_overall_timeout_s,
+        )
+        await enricher.enrich_batch([result])
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Enrichment failed: {e}",
+        ) from e
+
+    # Persist new fields back onto the prospect
+    new_socials = result.extra.get("social") or {}
+    if result.phone and result.phone != prospect.phone:
+        prospect.phone = result.phone
+    if result.email and result.email != prospect.email:
+        prospect.email = result.email
+    if result.location_address:
+        raw = dict(prospect.raw_data or {})
+        raw["location_address"] = result.location_address
+        prospect.raw_data = raw
+    if new_socials:
+        merged = {**(prospect.social_links or {}), **new_socials}
+        prospect.social_links = merged
+    await db.commit()
+    await db.refresh(prospect)
+
+    return {
+        "ok": True,
+        "status": result.extra.get("enrichment_status", "no_data"),
+        "ms": result.extra.get("enrichment_ms", 0),
+        "fields": {
+            "phone": result.phone,
+            "email": result.email,
+            "address": result.location_address,
+            "socials": new_socials,
+        },
+    }
 
 
 @router.get("/{prospect_id}/detail")

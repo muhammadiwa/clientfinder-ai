@@ -125,6 +125,12 @@ class Settings(BaseSettings):
     scraper_max_concurrent: int = 2
     scraper_proxy_enabled: bool = False
 
+    # Scout enrichment (T8.6) — homepage fetch for phone/email/address/socials
+    scout_enrichment_enabled: bool = True
+    scout_enrichment_page_timeout_s: int = 12
+    scout_enrichment_overall_timeout_s: int = 240
+    scout_enrichment_max_concurrent: int = 1
+
     # Outreach
     outreach_auto_approve: bool = False
     outreach_business_hours_start: str = "09:00"

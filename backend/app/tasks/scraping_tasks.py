@@ -15,11 +15,13 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.core.celery_app import celery_app
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.models.activity import Activity
 from app.models.system import ScrapingJob
 from app.services.scraper import get_scraper, persist_scraped_to_prospects
 from app.services.scraper.base import ScraperError
+from app.services.scraper.enricher import HomepageEnricher
 
 logger = logging.getLogger("clientfinder.tasks.scraping")
 
@@ -51,6 +53,32 @@ async def _run_job(job_id_str: str) -> int:
                 query,
             )
             results = await scraper.search(query)
+
+            # T8.6: enrich with phone/email/address/socials from homepage.
+            # Best-effort — never blocks persist_scraped_to_prospects.
+            enrichment_stats: dict = {}
+            if settings.scout_enrichment_enabled and results:
+                try:
+                    enricher = HomepageEnricher(
+                        page_timeout_s=settings.scout_enrichment_page_timeout_s,
+                        batch_timeout_s=settings.scout_enrichment_overall_timeout_s,
+                    )
+                    results = await enricher.enrich_batch(results)
+                    enrichment_stats = _summarize_enrichment(results)
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(
+                        "Enrichment batch failed (continuing): %s", e
+                    )
+                    for r in results:
+                        r.extra.setdefault("enrichment_status", "error")
+                    enrichment_stats = {
+                        "attempted": len(results),
+                        "ok": 0,
+                        "no_data": 0,
+                        "error": len(results),
+                        "timeout": 0,
+                    }
+
             inserted = await persist_scraped_to_prospects(db, results)
 
             # Mark completed
@@ -67,6 +95,7 @@ async def _run_job(job_id_str: str) -> int:
                         "source": job.source,
                         "results": len(results),
                         "new_prospects": inserted,
+                        "enrichment": enrichment_stats,
                     },
                 )
             )
@@ -138,3 +167,38 @@ async def run_scraping_job_sync(job_id_str: str) -> int:
     """
     logger.info("Sync fallback start: job=%s", job_id_str)
     return await _run_job(job_id_str)
+
+
+def _summarize_enrichment(results: list) -> dict:
+    """Aggregate per-result enrichment_status + field rates for the activity log.
+
+    T8.6 observability: per spec section 8.
+    """
+    attempted = len(results)
+    by_status: dict[str, int] = {"ok": 0, "no_data": 0, "error": 0, "timeout": 0}
+    field_hits = {"phone": 0, "email": 0, "address": 0, "socials": 0}
+    total_ms = 0
+    for r in results:
+        status = r.extra.get("enrichment_status", "no_data")
+        by_status[status] = by_status.get(status, 0) + 1
+        total_ms += r.extra.get("enrichment_ms", 0)
+        if r.phone:
+            field_hits["phone"] += 1
+        if r.email:
+            field_hits["email"] += 1
+        if r.location_address:
+            field_hits["address"] += 1
+        if r.extra.get("social"):
+            field_hits["socials"] += 1
+    return {
+        "attempted": attempted,
+        "ok": by_status["ok"],
+        "no_data": by_status["no_data"],
+        "error": by_status["error"],
+        "timeout": by_status["timeout"],
+        "field_rates": {
+            k: round(v / attempted, 2) if attempted else 0.0
+            for k, v in field_hits.items()
+        },
+        "avg_ms": int(total_ms / attempted) if attempted else 0,
+    }
