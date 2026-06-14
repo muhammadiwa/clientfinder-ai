@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListOrdered, Plus, Power, Trash2, ChevronRight } from "lucide-react";
@@ -63,9 +63,6 @@ export default function SequencesPage() {
           { order: 2, channel: "auto", category: "breakup", day_offset: 7 },
         ],
         is_active: true,
-        target_grade: null,
-        target_source: null,
-        target_industry: null,
         daily_send_cap: 50,
       });
       await reload();
@@ -258,7 +255,7 @@ function SequenceRow({
       {expanded && sequence.steps && sequence.steps.length > 0 && (
         <div className="border-t bg-muted/30 px-3 py-2">
           <ol className="text-sm space-y-1.5">
-            {sequence.steps.map((step, idx) => (
+            {sequence.steps.map((step: { channel: string; category: string; day_offset?: number }, idx: number) => (
               <li key={idx} className="flex items-center gap-3">
                 <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-xs font-semibold text-primary">
                   {idx + 1}
@@ -318,7 +315,7 @@ function SequenceTimeSeriesChart({ sequenceId }: { sequenceId: string }) {
         {t.timeSeries}
       </p>
       <ActivityChart
-        data={data.by_day.map((d) => ({
+        data={data.by_day.map((d: { date: string; sent: number; replied: number }) => ({
           date: d.date,
           sent: d.sent,
           replied: d.replied,

@@ -11,7 +11,7 @@ import { ProspectDetailPage } from "@/pages/ProspectDetail";
 import { PipelinePage } from "@/pages/Pipeline";
 import { ScoutPage } from "@/pages/Scout";
 import { OutreachPage } from "@/pages/Outreach";
-import { SequencesPage } from "@/pages/Sequences";
+import SequencesPage from "@/pages/Sequences";
 import { AnalyticsPage } from "@/pages/Analytics";
 import { NotFoundPage } from "@/pages/NotFound";
 import { ProfileSection } from "@/pages/settings/Profile";

@@ -1,6 +1,47 @@
 import { api } from "./client";
 import type { Prospect, ProspectListResponse } from "@/types";
 
+// Inline types for the ProspectDetailResponse shape.
+// These mirror the backend's Pydantic schemas (see
+// backend/app/models/prospect.py + lead.py) but are kept local
+// to the frontend to avoid coupling the UI to backend model
+// internals.
+export interface TechStack {
+  id: string;
+  cms: string | null;
+  framework: string | null;
+  has_ssl: boolean | null;
+  has_viewport_meta: boolean | null;
+  payment_gateways: string[];
+  body_bytes_read: number | null;
+  technologies: string[];
+  audited_at: string;
+}
+
+export interface PainPoint {
+  id: string;
+  category: string;
+  severity: number;
+  description: string | null;
+  source: string | null;
+}
+
+export interface LeadScore {
+  id: string;
+  grade: string;
+  total: number;
+  reasoning: string | null;
+  scored_at: string;
+}
+
+export interface Hook {
+  id: string;
+  hook_text: string;
+  audit_finding: string | null;
+  recommended_service: string | null;
+  is_used: boolean;
+}
+
 export interface ProspectFilters {
   page?: number;
   per_page?: number;
@@ -14,11 +55,11 @@ export interface ProspectFilters {
 }
 
 export interface ProspectDetailResponse {
-  prospect: ProspectItem;
-  tech_stack: TechStackData | null;
-  pain_points: PainPointItem[];
-  lead_score: LeadScoreData | null;
-  hooks: HookItem[];
+  prospect: Prospect;
+  tech_stack: TechStack | null;
+  pain_points: PainPoint[];
+  lead_score: LeadScore | null;
+  hooks: Hook[];
   signals: SignalItem[];
 }
 

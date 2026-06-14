@@ -54,7 +54,7 @@ export function useMessages(
     apiParams.status = "sent"; // approximate — backend doesn't support IN
   }
   if (params.filterChannel !== "all") {
-    apiParams.channel = params.filterChannel as Message["channel"];
+    apiParams.channel = params.filterChannel as string;
   }
   if (params.filterGrade !== "all") {
     apiParams.prospect_grade = params.filterGrade;

@@ -623,7 +623,7 @@ export function ProspectDetailPage() {
                       Detected technologies
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {tech_stack.technologies.map((t) => (
+                      {tech_stack.technologies.map((t: string) => (
                         <span
                           key={t}
                           className="text-xs font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground"
@@ -641,7 +641,7 @@ export function ProspectDetailPage() {
                       Issues
                     </p>
                     <ul className="space-y-1.5">
-                      {tech_stack.issues.map((issue) => (
+                      {tech_stack.issues.map((issue: string) => (
                         <li
                           key={issue}
                           className="text-xs text-muted-foreground flex items-start gap-1.5"

@@ -51,7 +51,7 @@ import { cn } from "@/lib/utils";
 import type { Message, MessageChannel, OutreachStats, Prospect, Template } from "@/types";
 
 type Tab = "pending_approval" | "drafts" | "sent" | "failed";
-type FilterChannel = "all" | MessageChannel;
+type FilterChannel = "all" | MessageChannel | string;
 type FilterGrade = "all" | "A" | "B" | "C" | "D";
 
 // --- Style maps ---
@@ -571,7 +571,7 @@ export function OutreachPage() {
       const payload: MessageGenerateRequest = {
         prospect_id: composerProspectId,
         hook_id: composerHookId,
-        channel: composerChannel,
+        channel: composerChannel as string,
         template_id: composerTemplateId || undefined,
       };
       // false = preview only (don't create draft)
@@ -610,7 +610,7 @@ export function OutreachPage() {
     try {
       const m = await createMessage({
         prospect_id: composerProspectId,
-        channel: composerChannel,
+        channel: composerChannel as string,
         subject: composerSubject || "(no subject)",
         body: composerBody,
         hook_id: composerHookId,
