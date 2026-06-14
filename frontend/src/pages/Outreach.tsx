@@ -160,11 +160,25 @@ export function OutreachPage() {
   // T8.5+++++++ Group 2: optimistic UI helper for bulk
   // actions. Removes the given ids from the local
   // messages state immediately, reverts on error.
-  const applyOptimistic = useApplyOptimistic(messages, setMessages);
+  // T8.5+++++++ (cache-level): also updates the TanStack
+  // query cache so other components viewing the same
+  // queryKey (e.g. a future "pending count" badge) see
+  // the update too.
+  const messagesQueryKey = [
+    "messages",
+    tab,
+    filterChannel,
+    filterGrade,
+  ] as const;
+  const applyOptimistic = useApplyOptimistic({
+    messages,
+    setMessages,
+    queryKey: messagesQueryKey,
+  });
   // T8.5+++++++ useQuery refactor: messages fetch
   // goes through TanStack Query now (cached, refetch,
   // queryKey-based). We still keep a local `messages`
-  // state for the optimistic mutations to write to.
+  // state for the optimistic-UI helpers to write to.
   const messagesQuery = useMessages({
     tab: tab as "all" | "drafts" | "pending_approval" | "sent" | "failed",
     filterChannel,
