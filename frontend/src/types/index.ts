@@ -138,6 +138,119 @@ export interface MessageListResponse {
   pages: number;
 }
 
+/** Counts of messages per status — drives the hero KPI cards. */
+export interface OutreachStats {
+  draft: number;
+  pending_approval: number;
+  approved: number;
+  scheduled: number;
+  sending: number;
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  failed: number;
+  rejected: number;
+}
+
+// --- T7 Analytics ---
+
+export interface LeadSourceQuality {
+  source: string;
+  count: number;
+  avg_score: number | null;
+  grade_a_pct: number;
+}
+
+export interface GradeDistribution {
+  A: number;
+  B: number;
+  C: number;
+  D: number;
+  unscored: number;
+}
+
+export interface TimeToEnrichStats {
+  avg_hours: number | null;
+  p50_hours: number | null;
+  p90_hours: number | null;
+  n: number;
+}
+
+export interface OutreachChannelStats {
+  channel: string;
+  sent: number;
+  delivered: number;
+  opened: number;
+  replied: number;
+  bounced: number;
+  failed: number;
+  approval_rate: number;
+}
+
+export interface DailyVolume {
+  date: string;
+  sent: number;
+  replied: number;
+}
+
+export interface ApprovalFunnelStats {
+  drafts: number;
+  pending_approval: number;
+  approved: number;
+  sent: number;
+  delivered: number;
+  replied: number;
+  approval_rate: number;
+}
+
+export interface PipelineStageCount {
+  status: string;
+  count: number;
+  pct: number;
+}
+
+export interface ActivityCount {
+  action: string;
+  count: number;
+  last_24h: number;
+}
+
+export interface LLMUsageStats {
+  total_calls: number;
+  total_tokens: number;
+  last_24h_calls: number;
+}
+
+export interface AnalyticsRange {
+  days: number;
+  start: string;
+  end: string;
+}
+
+export interface AnalyticsOverview {
+  range: AnalyticsRange;
+  total_leads: number;
+  leads_by_source: LeadSourceQuality[];
+  grade_distribution: GradeDistribution;
+  avg_lead_score: number | null;
+  time_to_enrich: TimeToEnrichStats;
+  total_messages_sent: number;
+  outreach_by_channel: OutreachChannelStats[];
+  approval_funnel: ApprovalFunnelStats;
+  daily_volume: DailyVolume[];
+  pipeline_by_stage: PipelineStageCount[];
+  total_won: number;
+  win_rate: number | null;
+  avg_deal_size_proxy: number | null;
+  activity_counts: ActivityCount[];
+  llm_usage: LLMUsageStats;
+  celery_success_rate: number | null;
+  scraping_success_rate: number | null;
+}
+
 // --- T6 Templates (T6 Group 3) ---
 
 export interface Template {

@@ -1,140 +1,168 @@
 # ClientFinder AI Agent
 
-> AI-powered lead generation agent for freelance software developers.
-> Temukan UMKM Indonesia yang butuh jasa digital — scoring otomatis, outreach personal.
+> **AI-powered lead generation + outreach platform for freelance software developers.**
 
-[![Phase](https://img.shields.io/badge/phase-T1-blue)]() [![Stack](https://img.shields.io/badge/stack-FastAPI%20%2B%20React%20%2B%20PostgreSQL-green)]() [![License](https://img.shields.io/badge/license-MIT-yellow)]()
+Self-hosted, free-tier stack, Bahasa Indonesia focus, human-in-the-loop outreach.
 
-## What is this?
+---
 
-ClientFinder adalah **AI agent** yang:
+## What it does
 
-1. **SCOUT** — Cari bisnis yang punya indikasi butuh software (Google, Maps, Twitter, Threads)
-2. **ANALYZE** — Audit kebutuhan mereka, deteksi pain points, skor lead
-3. **OUTREACH** — Generate pesan personal, kirim via Email/WhatsApp/Threads
-4. **TRACK** — Simpan ke CRM, follow-up otomatis dengan human approval
+1. **Discovers** Indonesian UMKM prospects (klinik gigi, kafe, salon, retail) who likely need software (web, mobile, ERP, AI)
+2. **Analyzes** each prospect: tech stack audit, pain point detection, 0-100 scoring
+3. **Drafts** personalized outreach (Email + WhatsApp) for human review
+4. **Approves** before send (R10 — every outbound message requires human approval)
+5. **Tracks** delivery + reply + win rate in the analytics dashboard
 
-Fokus: **UMKM Indonesia** (klinik, F&B, retail, jasa, manufaktur kecil).
+---
+
+## Quick start (5 minutes)
+
+```bash
+# 1. Clone + enter
+git clone https://github.com/muhammadiwa/clientfinder-ai.git
+cd clientfinder-ai
+
+# 2. Configure secrets
+cp .env.example .env
+# Edit .env — at minimum set APP_SECRET, POSTGRES_PASSWORD
+
+# 3. Boot
+docker compose up -d
+# Wait ~30s for all 9 containers to start
+
+# 4. Initialize database + create first user
+docker compose exec backend python -m app.scripts.init_admin
+# Saves admin email/password to .admin_credentials (gitignored)
+
+# 5. Open
+open http://localhost
+# Login with the admin email/password printed above
+```
+
+---
 
 ## Architecture
 
 ```
-React (Vite)  →  Nginx (reverse proxy)
-                     │
-                     ├──► FastAPI (backend API)
-                     │       │
-                     │       ├──► PostgreSQL  (data)
-                     │       ├──► Redis       (cache + queue)
-                     │       └──► MinIO       (files)
-                     │
-                     ├──► Celery Worker (scraping/analysis/outreach tasks)
-                     ├──► Celery Beat   (scheduler)
-                     ├──► Flower        (worker monitor)
-                     ├──► SearXNG       (Google search proxy)
-                     └──► WAHA          (WhatsApp gateway)
+┌───────────  React (Vite + TypeScript)  ───────────┐
+│  /dashboard  /scout  /prospects  /pipeline        │
+│  /outreach   /analytics   /settings                │
+└────────────────────┬───────────────────────────────┘
+                     │  axios + JWT
+                     ▼
+┌───────────  FastAPI (Python 3.12)  ───────────────┐
+│  /api/v1/auth  /prospects  /scraping  /ai         │
+│  /outreach  /templates  /sequences  /analytics    │
+│  /healthz  /metrics  /docs  /openapi.json         │
+└────────┬──────┬─────────┬──────────┬──────────────┘
+         │      │         │          │
+         ▼      ▼         ▼          ▼
+     ┌────┐ ┌─────┐ ┌────────┐ ┌──────────┐
+     │ PG │ │Redis│ │ Celery │ │ Playwright│
+     └────┘ └─────┘ └────────┘ └──────────┘
+                                        │
+                                        ▼
+                              ┌──────────────┐
+                              │   searxng    │
+                              │   openWA     │
+                              │  TokenRouter │
+                              └──────────────┘
 ```
 
-## Quick Start (Local)
+9 Docker services: `frontend` · `backend` · `postgres` · `redis` · `celery-worker` · `celery-beat` · `playwright` · `searxng` · `nginx`
 
-### Prerequisites
-- Docker 24+ & Docker Compose v2
-- 4 GB+ RAM, 10 GB+ disk
-- Linux/macOS/WSL2
+---
 
-### Setup
+## Stack (all free-tier or self-hosted)
 
-```bash
-# 1. Clone & enter project
-cd /home/kumaha-sia/clientfinder
-
-# 2. Copy & edit env
-cp .env.example .env
-nano .env   # set strong passwords (see below)
-
-# 3. Generate strong secrets
-export POSTGRES_PASSWORD=$(openssl rand -hex 24)
-export REDIS_PASSWORD=$(openssl rand -hex 24)
-export MINIO_ROOT_PASSWORD=$(openssl rand -hex 24)
-export APP_SECRET=$(openssl rand -hex 32)
-export SEARXNG_SECRET=$(openssl rand -hex 24)
-# replace placeholders in .env with these values
-
-# 4. Build & start
-make build
-make up
-
-# 5. Check health
-make health
-
-# 6. Open in browser
-# Frontend:  http://localhost
-# Backend:   http://localhost/api/v1
-# API docs:  http://localhost/docs
-# Flower:    http://localhost:5555
-# MinIO:     http://localhost:9001
-# SearXNG:   http://localhost:8888
-```
-
-### Common Commands
-
-```bash
-make help             # list all available commands
-make up               # start all services
-make down             # stop all services
-make logs             # tail all logs
-make backend-shell    # open shell in backend container
-make postgres-shell   # open psql
-make redis-shell      # open redis-cli
-make migrate          # run DB migrations
-make test             # run tests
-make lint             # run linting
-make health           # check service status
-```
-
-## Project Structure
-
-```
-clientfinder/
-├── backend/           # FastAPI + Celery
-├── frontend/          # React + Vite + TypeScript
-├── ops/               # Infrastructure configs
-│   ├── nginx/         # Reverse proxy
-│   ├── searxng/       # Search engine
-│   ├── postgres/      # DB init
-│   ├── minio/         # Object storage
-│   └── waha/          # WhatsApp API (T6)
-├── docs/              # Documentation
-├── scripts/           # Helper scripts
-├── docker-compose.yml # Main compose file
-├── Makefile           # Common commands
-└── .env.example       # Environment template
-```
-
-## Development Roadmap
-
-| Phase | Status | Deliverable |
+| Layer | Tool | Cost |
 |---|---|---|
-| **T1** | ✅ Done | Infrastructure foundation (this phase) |
-| **T2** | ⏳ Next | Backend core: DB, auth, models |
-| **T3** | Pending | Frontend core: routing, auth, layout |
-| **T4** | Pending | Scout module: 4 scrapers |
-| **T5** | Pending | Analyst module: audit, scoring, LLM |
-| **T6** | Pending | Outreach module: email, WA, threads |
-| **T7** | Pending | Analytics & lead pipeline |
-| **T8** | Pending | Production hardening |
+| Backend | Python 3.12 + FastAPI | Free |
+| Frontend | React 19 + Vite + TS | Free |
+| Database | PostgreSQL 16 | Free (self-hosted) |
+| Cache + broker | Redis 7 | Free |
+| Task queue | Celery | Free |
+| Scraping | Playwright (Chromium) | Free |
+| LLM | TokenRouter primary + Groq + Gemini | Free tier |
+| Search engine | searxng | Free (self-hosted) |
+| Email | Postfix SMTP (self-host) + Zoho fallback | Free |
+| WhatsApp | openWA (user-deployed) | Free |
+| Monitoring | Prometheus + Grafana (T8) | Free |
+| Backups | Local cron + rclone (T8) | Free |
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full technical design.
+**Total cost: $0/month.** Only LLM API calls (TokenRouter / Groq / Gemini free tier) leave your VPS.
 
-## Tech Stack
+---
 
-**Backend:** Python 3.11 · FastAPI · SQLAlchemy 2.0 · Celery · Playwright · twikit
-**Frontend:** React 18 · TypeScript · Vite · TanStack Query · shadcn/ui · Tailwind
-**Data:** PostgreSQL 16 · Redis 7 · MinIO · SearXNG
-**AI:** Groq (Llama 3.1 70B) + Gemini 1.5 Flash (free tier)
-**Infra:** Docker · Nginx · Caddy (prod)
+## Key principles (locked in D1-D133)
 
-All **free & open source**. Total operational cost: VPS only (~$10-25/mo).
+- **R1**: All tools free. No paid SaaS without explicit approval.
+- **R2**: Indonesia-only. Bahasa Indonesia for all user-facing copy.
+- **R3**: UMKM niche only. Klinik Gigi + Klinik Kecantikan + F&B chain (v1).
+- **R6**: Production-ready, not MVP. Docker + tests + monitoring + backups.
+- **R9**: Outreach v1 = Email + WhatsApp. Threads/LinkedIn v2.
+- **R10**: **Every** outbound message requires human approval. Non-negotiable.
+- **R13**: Gitflow-lite. `main` = production. `develop` = integration. `feature/*` = per-task.
+- **R14**: Push + auto-PR-merge after every logical group.
+- **R16**: **All** API keys in `.env` (gitignored), never hardcoded in source.
+
+---
+
+## Development workflow
+
+```bash
+# Always work on a feature branch
+git checkout develop
+git pull origin develop
+git checkout -b feature/my-task
+
+# Edit code, commit (conventional commits)
+git commit -m "feat(T9): add retention cohort chart"
+
+# Push + auto-merge to develop
+git push -u origin feature/my-task
+GITHUB_TOKEN=... bash scripts/auto-pr-merge.sh feature/my-task
+# (auto-creates PR to develop + squash-merge)
+```
+
+See [docs/AGENTS.md](docs/AGENTS.md) for the full agent spec.
+
+---
+
+## Production deployment
+
+See [docs/RUNBOOK.md](docs/RUNBOOK.md) for the complete deployment + incident response guide.
+
+TL;DR:
+1. Provision VPS (Ubuntu 24.04, 2 vCPU / 4 GB RAM / 80 GB SSD)
+2. Install Docker + Docker Compose
+3. Clone repo, configure `.env` (set `APP_ENV=production`)
+4. Set up cron for backups: `0 2 * * * /path/to/backup.sh`
+5. Set up reverse proxy (Caddy / nginx + Let's Encrypt)
+6. Set up monitoring (Prometheus scrape /metrics + Grafana dashboards)
+
+---
+
+## Documentation
+
+- [docs/AGENTS.md](docs/AGENTS.md) — 10-agent system spec
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system architecture
+- [docs/RUNBOOK.md](docs/RUNBOOK.md) — deployment + incident response
+- [docs/SECURITY.md](docs/SECURITY.md) — security policy + threat model
+- [docs/BACKUP.md](docs/BACKUP.md) — backup + restore procedures
+- [docs/API.md](docs/API.md) — REST API reference (auto-generated from OpenAPI)
+
+---
 
 ## License
 
-MIT © Juragan
+MIT — see [LICENSE](LICENSE).
+
+---
+
+## Contributing
+
+This is a solo project (single developer / "Juragan" workflow). PRs welcome for bug fixes + small improvements. For major features, open an issue first.
+
+**Status: 8/8 phases done.** T1 (infra) → T2 (backend) → T3 (frontend) → T4 (scout) → T5 (analyst) → T6 (outreach) → T7 (analytics) → T8 (production hardening).

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Search, Filter, MoreHorizontal, Plus, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useProspects } from "@/hooks/useProspects";
+import { t } from "@/i18n/id";
 import type { ProspectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -23,19 +24,20 @@ function getInitials(name: string): string {
 }
 
 const STATUS_FILTERS: { label: string; value: ProspectStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "New", value: "new" },
-  { label: "Scored", value: "scored" },
-  { label: "Contacted", value: "contacted" },
-  { label: "Replied", value: "replied" },
-  { label: "Won", value: "won" },
-  { label: "Lost", value: "lost" },
+  { label: t.prospects.allStatus, value: "all" },
+  { label: t.prospects.newStatus, value: "new" },
+  { label: t.prospects.scoredStatus, value: "scored" },
+  { label: t.prospects.contactedStatus, value: "contacted" },
+  { label: t.prospects.repliedStatus, value: "replied" },
+  { label: t.prospects.wonStatus, value: "won" },
+  { label: t.prospects.lostStatus, value: "lost" },
 ];
 
 const PAGE_SIZE = 20;
 
 export function ProspectsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
   const [statusFilter, setStatusFilter] = useState<ProspectStatus | "all">("all");
   const [page, setPage] = useState(1);
@@ -181,15 +183,15 @@ export function ProspectsPage() {
                       icon={<Filter className="h-5 w-5" />}
                       title={
                         search
-                          ? `No results for "${search}"`
+                          ? `Tidak ada hasil untuk "${search}"`
                           : statusFilter !== "all"
-                            ? `No ${statusFilter} prospects`
-                            : "No prospects found"
+                            ? `Tidak ada prospek ${statusFilter}`
+                            : t.prospects.noMatch
                       }
                       description={
                         search
-                          ? "Try a different search term or clear the filter."
-                          : "Run a scout job to discover businesses that need software services."
+                          ? t.prospects.noProspectsHint
+                          : t.prospects.emptyHint
                       }
                       action={
                         <Button className="mt-4" size="sm" asChild>
@@ -207,7 +209,7 @@ export function ProspectsPage() {
                   <tr
                     key={p.id}
                     className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer group"
-                    onClick={() => (window.location.href = `/prospects/${p.id}`)}
+                    onClick={() => navigate(`/prospects/${p.id}`)}
                   >
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">

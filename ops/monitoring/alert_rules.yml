@@ -1,0 +1,116 @@
+---
+# Prometheus alert rules for ClientFinder
+# T8.5 Group 2: alerting.
+
+groups:
+  # --- Backend health ---
+  - name: cf-backend-health
+    rules:
+      - alert: BackendDown
+        expr: up{job="cf-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ClientFinder backend is down"
+          description: "cf-backend has been unreachable for 2+ minutes. Check: docker compose ps backend, docker compose logs backend --tail=100."
+
+      - alert: DatabaseDown
+        expr: cf_db_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database is down"
+          description: "PostgreSQL health check has been failing for 2+ minutes. Check: docker compose ps postgres, docker compose logs postgres --tail=50."
+
+      - alert: RedisDown
+        expr: cf_redis_up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis is down"
+          description: "Redis health check has been failing for 5+ minutes. Rate limiting falls back to in-memory. Check: docker compose ps redis, docker compose logs redis --tail=50."
+
+  # --- Error rate ---
+  - name: cf-error-rate
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(cf_http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(cf_http_requests_total[5m]))
+          > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "5xx error rate above 5% (5min window)"
+          description: "Current 5xx rate: {{ $value | humanizePercentage }}. Check: docker compose logs backend --since=10m | grep ERROR."
+
+      - alert: VeryHighErrorRate
+        expr: |
+          sum(rate(cf_http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(cf_http_requests_total[5m]))
+          > 0.20
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx error rate above 20% (CRITICAL)"
+          description: "Current 5xx rate: {{ $value | humanizePercentage }}. Service is likely broken. Consider: docker compose restart backend."
+
+  # --- Latency ---
+  - name: cf-latency
+    rules:
+      - alert: SlowRequests
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(cf_http_request_duration_seconds_bucket[5m])) by (path, le)
+          ) > 1.0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 latency above 1s for {{ $labels.path }}"
+          description: "P95 latency on {{ $labels.path }}: {{ $value }}s. May indicate slow DB query, network issue, or rate limit pressure."
+
+  # --- Rate limiting ---
+  - name: cf-rate-limit
+    rules:
+      - alert: HighRateLimitHits
+        expr: sum(rate(cf_rate_limit_hits_total[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate-limit hit rate (potential abuse)"
+          description: "Rate limit hits at {{ $value }} req/s. If from a single IP, may be abuse. Check: cf_rate_limit_hits_total by path."
+
+  # --- Operational ---
+  - name: cf-operational
+    rules:
+      - alert: LLMFailureBurst
+        # If many scraping jobs fail in 10m
+        expr: |
+          sum(rate(cf_http_requests_total{path="/api/v1/scraping/jobs",status="500"}[10m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Scraping jobs are failing"
+          description: "High rate of failed scraping jobs. Check: docker compose logs celery-worker --tail=100, docker compose ps playwright."
+
+      - alert: DiskSpaceLow
+        # Host disk — uncomment if node_exporter is running
+        # expr: 100 - (node_filesystem_avail_bytes{mountpoint="/"} * 100 / node_filesystem_size_bytes{mountpoint="/"}) > 80
+        # Use the line below as a stand-in (always 0, won't fire)
+        expr: vector(0)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space low (host)"
+          description: "Host disk usage above 80%. Check: df -h /."

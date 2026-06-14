@@ -1,0 +1,45 @@
+---
+# Alertmanager — groups + dedupes alerts
+# T8.5 Group 2.
+# Webhook not configured by default. Add your own (Slack, Discord, PagerDuty, email).
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  # Route critical alerts to PagerDuty (if configured)
+  routes:
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 10s
+      repeat_interval: 1h
+
+receivers:
+  - name: 'default'
+    webhook_configs:
+      - url: 'http://localhost:5001/alerts'  # placeholder; replace with real webhook
+        send_resolved: true
+        # In production, use a real webhook:
+        # url: 'https://hooks.slack.com/services/T0.../B0.../...'
+        # Or: Discord, PagerDuty, custom.
+
+  - name: 'critical'
+    webhook_configs:
+      - url: 'http://localhost:5001/alerts-critical'
+        send_resolved: true
+
+inhibit_rules:
+  # If a service is down, don't fire dependent alerts
+  - source_match:
+      severity: 'critical'
+      alertname: 'BackendDown'
+    target_match:
+      severity: 'warning'
+    equal: ['service']

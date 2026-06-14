@@ -12,14 +12,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { FormField, Input } from "@/components/ui/input";
 import { useRegister } from "@/hooks/useAuth";
 import { isApiError } from "@/api/client";
+import { formatApiError, formatFieldError } from "@/lib/formatError";
+import { t } from "@/i18n/id";
 
 const PERKS = [
-  "AI-powered prospect discovery from Google Maps, Twitter, Threads",
-  "Automatic lead scoring with pain-point analysis",
-  "Personalized outreach with human-in-the-loop approval",
+  "Penemuan prospek bertenaga AI dari Google Maps, Twitter, Threads",
+  "Penilaian prospek otomatis dengan analisis masalah",
+  "Outreach yang dipersonalisasi dengan persetujuan manusia",
 ];
 
 export function RegisterPage() {
@@ -29,26 +31,48 @@ export function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    fullName?: string;
+    email?: string;
+    password?: string;
+  }>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+    setFieldErrors({});
+    // Client-side validation
+    const errs: typeof fieldErrors = {};
+    if (!fullName.trim()) {
+      errs.fullName = formatFieldError("fullName", "required");
+    }
+    if (!email.trim()) {
+      errs.email = formatFieldError("email", "required");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errs.email = formatFieldError("email", "invalid");
+    }
+    if (!password) {
+      errs.password = formatFieldError("password", "required");
+    } else if (password.length < 8) {
+      errs.password = formatFieldError("password", "tooShort", { min: 8 });
+    }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
+    setSubmitting(true);
     try {
       await register.mutateAsync({ email, password, full_name: fullName });
-      toast.success("Account created! Please sign in.");
+      toast.success(t.auth.accountCreated);
       navigate("/login");
     } catch (error) {
       if (isApiError(error)) {
-        const detail = error.response?.data?.detail;
-        const message =
-          typeof detail === "string" ? detail : "Could not create account";
-        toast.error(message);
+        toast.error(formatApiError(error));
       } else {
-        toast.error("Network error. Please try again.");
+        toast.error(t.auth.networkError);
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -120,53 +144,43 @@ export function RegisterPage() {
             </CardHeader>
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="full_name"
-                    className="text-sm font-medium leading-none"
-                  >
-                    Full name
-                  </label>
+                <FormField
+                  label={t.auth.fullName}
+                  required
+                  error={fieldErrors.fullName}
+                >
                   <Input
-                    id="full_name"
-                    placeholder="Your name"
+                    placeholder="Nama Anda"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    required
                     autoComplete="name"
                     autoFocus
-                    disabled={register.isPending}
+                    disabled={submitting}
                     className="h-10"
                   />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="email"
-                    className="text-sm font-medium leading-none"
-                  >
-                    Email
-                  </label>
+                </FormField>
+                <FormField
+                  label={t.auth.email}
+                  required
+                  error={fieldErrors.email}
+                >
                   <Input
-                    id="email"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="anda@contoh.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                     autoComplete="email"
-                    disabled={register.isPending}
+                    disabled={submitting}
                     className="h-10"
                   />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="password"
-                    className="text-sm font-medium leading-none"
-                  >
-                    Password
-                  </label>
+                </FormField>
+                <FormField
+                  label={t.auth.password}
+                  required
+                  hint="Minimal 8 karakter"
+                  error={fieldErrors.password}
+                >
                   <Input
-                    id="password"
                     type="password"
                     placeholder="Min 8 characters"
                     value={password}
@@ -174,14 +188,10 @@ export function RegisterPage() {
                     required
                     minLength={8}
                     autoComplete="new-password"
-                    disabled={register.isPending}
+                    disabled={submitting}
                     className="h-10"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    At least 8 characters. Use a mix of letters, numbers, and
-                    symbols for a stronger password.
-                  </p>
-                </div>
+                </FormField>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pt-2">
                 <Button
@@ -190,7 +200,7 @@ export function RegisterPage() {
                   size="lg"
                   disabled={register.isPending}
                 >
-                  {register.isPending ? (
+                  {submitting ? (
                     "Creating account…"
                   ) : (
                     <>

@@ -3,6 +3,7 @@ import type {
   Message,
   MessageChannel,
   MessageListResponse,
+  OutreachStats,
   Template,
   TemplateListResponse,
   Sequence,
@@ -44,6 +45,7 @@ export interface MessageListFilters {
   status?: string;
   channel?: MessageChannel;
   prospect_id?: string;
+  prospect_grade?: string;
   needs_approval?: boolean;
 }
 
@@ -58,10 +60,17 @@ export async function listMessages(
   if (filters.status) params.status = filters.status;
   if (filters.channel) params.channel = filters.channel;
   if (filters.prospect_id) params.prospect_id = filters.prospect_id;
+  if (filters.prospect_grade) params.prospect_grade = filters.prospect_grade;
   if (filters.needs_approval) params.needs_approval = true;
   const { data } = await api.get<MessageListResponse>("/outreach/messages", {
     params,
   });
+  return data;
+}
+
+/** Hero KPI counts — drives the outreach stats cards. */
+export async function getOutreachStats(): Promise<OutreachStats> {
+  const { data } = await api.get<OutreachStats>("/outreach/stats");
   return data;
 }
 

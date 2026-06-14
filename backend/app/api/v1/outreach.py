@@ -16,12 +16,21 @@ Endpoints:
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import desc, func, select
 
+from app.core.config import settings
 from app.core.database import DB
 from app.core.deps import CurrentUser
+from app.core.security import (
+    rate_limit_ai,
+    rate_limit_create,
+    rate_limit_delete,
+    rate_limit_send,
+    rate_limit_update,
+)
 from app.models.outreach import Message
+from app.models.prospect import Prospect
 from app.schemas.outreach import (
     MessageApprovalRequest,
     MessageCreate,
@@ -29,6 +38,7 @@ from app.schemas.outreach import (
     MessageListResponse,
     MessageOut,
     MessageUpdate,
+    OutreachStatsOut,
 )
 from app.services.outreach import (
     approve_message,
@@ -42,12 +52,39 @@ from app.services.prompts import build_outreach_email_prompt
 router = APIRouter(prefix="/outreach", tags=["outreach"])
 
 
+@router.get("/stats", response_model=OutreachStatsOut)
+async def get_outreach_stats(
+    current_user: CurrentUser,
+    db: DB,
+) -> OutreachStatsOut:
+    """Counts of messages per status (for the hero KPI cards).
+
+    Cheap GROUP BY query — no joins, no prospect lookups.
+    """
+    q = select(Message.status, func.count(Message.id)).group_by(
+        Message.status
+    )
+    rows = (await db.execute(q)).all()
+    counts = {row[0]: int(row[1]) for row in rows}
+    # Normalize all 13 statuses (default 0)
+    all_statuses = [
+        "draft", "pending_approval", "approved", "scheduled",
+        "sending", "sent", "delivered", "opened", "clicked",
+        "replied", "bounced", "failed", "rejected",
+    ]
+    return OutreachStatsOut(
+        **{s: counts.get(s, 0) for s in all_statuses},
+    )
+
+
 @router.post(
     "/messages",
     response_model=MessageOut,
     status_code=status.HTTP_201_CREATED,
 )
+@rate_limit_create()
 async def create_message(
+    request: Request,
     payload: MessageCreate,
     current_user: CurrentUser,
     db: DB,
@@ -90,12 +127,14 @@ async def list_messages(
     status_filter: str | None = Query(None, alias="status"),
     channel: str | None = None,
     prospect_id: UUID | None = None,
+    prospect_grade: str | None = Query(None, description="Filter by prospect's quality_grade (A/B/C/D)"),
     needs_approval: bool = False,
 ) -> MessageListResponse:
     """List messages with filters.
 
     `needs_approval=true` returns only messages in
     pending_approval status (the R10 review queue).
+    `prospect_grade=A|B|C|D` filters by the linked prospect's grade.
     """
     q = select(Message)
     count_q = select(func.count(Message.id))
@@ -112,6 +151,13 @@ async def list_messages(
     if prospect_id:
         q = q.where(Message.prospect_id == prospect_id)
         count_q = count_q.where(Message.prospect_id == prospect_id)
+    if prospect_grade:
+        q = q.join(Prospect, Prospect.id == Message.prospect_id).where(
+            Prospect.quality_grade == prospect_grade
+        )
+        count_q = count_q.join(
+            Prospect, Prospect.id == Message.prospect_id
+        ).where(Prospect.quality_grade == prospect_grade)
 
     total = (await db.execute(count_q)).scalar() or 0
     offset = (page - 1) * per_page
@@ -145,7 +191,9 @@ async def get_message(
 
 
 @router.patch("/messages/{message_id}", response_model=MessageOut)
+@rate_limit_update()
 async def update_message(
+    request: Request,
     message_id: UUID,
     payload: MessageUpdate,
     current_user: CurrentUser,
@@ -174,7 +222,9 @@ async def update_message(
 
 
 @router.delete("/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+@rate_limit_delete()
 async def delete_message(
+    request: Request,
     message_id: UUID,
     current_user: CurrentUser,
     db: DB,
@@ -243,7 +293,9 @@ async def approve_endpoint(
 
 
 @router.post("/messages/{message_id}/send", response_model=MessageOut)
+@rate_limit_send()
 async def send_message_endpoint(
+    request: Request,
     message_id: UUID,
     current_user: CurrentUser,
     db: DB,
@@ -266,7 +318,9 @@ async def send_message_endpoint(
 
 
 @router.post("/messages/generate", response_model=MessageOut)
+@rate_limit_ai()
 async def generate_message(
+    request: Request,
     payload: MessageGenerateRequest,
     current_user: CurrentUser,
     db: DB,

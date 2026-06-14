@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Sparkles, ArrowRight } from "lucide-react";
-import { toast } from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { FormField, Input } from "@/components/ui/input";
 import { useLogin } from "@/hooks/useAuth";
-import { isApiError } from "@/api/client";
+import { formatFieldError } from "@/lib/formatError";
+import { t } from "@/i18n/id";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -23,24 +23,42 @@ export function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const from = (location.state as { from?: string } | null)?.from ?? "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
+    // Client-side validation
+    const errs: typeof fieldErrors = {};
+    if (!email.trim()) {
+      errs.email = formatFieldError("email", "required");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errs.email = formatFieldError("email", "invalid");
+    }
+    if (!password) {
+      errs.password = formatFieldError("password", "required");
+    }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      return;
+    }
+    setSubmitting(true);
+    // T8.5+++++++ Group 1: useApiMutation handles the toast
+    // (success: t.auth.welcomeBack, error: formatApiError)
+    // and the navigation on success.
     try {
       await login.mutateAsync({ email, password });
-      toast.success("Welcome back!");
       navigate(from, { replace: true });
-    } catch (error) {
-      if (isApiError(error)) {
-        const detail = error.response?.data?.detail;
-        const message =
-          typeof detail === "string" ? detail : "Invalid email or password";
-        toast.error(message);
-      } else {
-        toast.error("Network error. Please try again.");
-      }
+    } catch {
+      // Error already toasted by useApiMutation
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -116,53 +134,45 @@ export function LoginPage() {
             </CardHeader>
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="email"
-                    className="text-sm font-medium leading-none"
-                  >
-                    Email
-                  </label>
+                <FormField
+                  label={t.auth.email}
+                  required
+                  error={fieldErrors.email}
+                >
                   <Input
-                    id="email"
                     type="email"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                     autoComplete="email"
                     autoFocus
-                    disabled={login.isPending}
+                    disabled={submitting}
                     className="h-10"
                   />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="password"
-                    className="text-sm font-medium leading-none"
-                  >
-                    Password
-                  </label>
+                </FormField>
+                <FormField
+                  label={t.auth.password}
+                  required
+                  error={fieldErrors.password}
+                >
                   <Input
-                    id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
                     autoComplete="current-password"
-                    disabled={login.isPending}
+                    disabled={submitting}
                     className="h-10"
                   />
-                </div>
+                </FormField>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pt-2">
                 <Button
                   type="submit"
                   className="w-full"
                   size="lg"
-                  disabled={login.isPending}
+                  disabled={submitting}
                 >
-                  {login.isPending ? (
+                  {submitting ? (
                     "Signing in..."
                   ) : (
                     <>

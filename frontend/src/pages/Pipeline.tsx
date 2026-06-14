@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GradePill } from "@/components/ui/status-pill";
 import { useProspects } from "@/hooks/useProspects";
+import { t } from "@/i18n/id";
 import type { Prospect, ProspectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -15,13 +16,13 @@ const STAGES: {
   ring: string;
   badge: string;
 }[] = [
-  { key: "new", label: "New", ring: "ring-slate-400", badge: "bg-slate-100 text-slate-700" },
-  { key: "enriching", label: "Enriching", ring: "ring-blue-400", badge: "bg-blue-100 text-blue-700" },
-  { key: "scored", label: "Scored", ring: "ring-violet-400", badge: "bg-violet-100 text-violet-700" },
-  { key: "contacted", label: "Contacted", ring: "ring-amber-400", badge: "bg-amber-100 text-amber-700" },
-  { key: "replied", label: "Replied", ring: "ring-orange-400", badge: "bg-orange-100 text-orange-700" },
-  { key: "won", label: "Won", ring: "ring-emerald-400", badge: "bg-emerald-100 text-emerald-700" },
-  { key: "lost", label: "Lost", ring: "ring-rose-400", badge: "bg-rose-100 text-rose-700" },
+  { key: "new", label: t.pipeline.stages.new, ring: "ring-slate-400", badge: "bg-slate-100 text-slate-700" },
+  { key: "enriching", label: t.pipeline.stages.enriching, ring: "ring-blue-400", badge: "bg-blue-100 text-blue-700" },
+  { key: "scored", label: t.pipeline.stages.scored, ring: "ring-violet-400", badge: "bg-violet-100 text-violet-700" },
+  { key: "contacted", label: t.pipeline.stages.contacted, ring: "ring-amber-400", badge: "bg-amber-100 text-amber-700" },
+  { key: "replied", label: t.pipeline.stages.replied, ring: "ring-orange-400", badge: "bg-orange-100 text-orange-700" },
+  { key: "won", label: t.pipeline.stages.won, ring: "ring-emerald-400", badge: "bg-emerald-100 text-emerald-700" },
+  { key: "lost", label: t.pipeline.stages.lost, ring: "ring-rose-400", badge: "bg-rose-100 text-rose-700" },
 ];
 
 export function PipelinePage() {
@@ -53,7 +54,7 @@ export function PipelinePage() {
               Find prospects
             </Link>
           </Button>
-          <Button disabled title="Manual add coming in T4">
+          <Button disabled title={t.pipeline.manualAddSoon}>
             <Plus className="h-4 w-4" />
             New prospect
           </Button>

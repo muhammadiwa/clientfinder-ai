@@ -25,7 +25,7 @@ import { toast } from "react-hot-toast";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FormField, Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -38,6 +38,8 @@ import {
   type ScrapingPreset,
 } from "@/api/scouting";
 import { useProspects } from "@/hooks/useProspects";
+import { t } from "@/i18n/id";
+import { formatApiError, formatFieldError } from "@/lib/formatError";
 import {
   analyzeProspect,
   isLLMAvailable,
@@ -62,31 +64,31 @@ interface SourceOption {
 const SOURCES: SourceOption[] = [
   {
     id: "google",
-    label: "Google Search",
+    label: t.scout.sources.google,
     icon: <Globe className="h-4 w-4" />,
     available: true,
-    description: "SearXNG meta-search (Google + DuckDuckGo + Bing + Brave)",
+    description: t.scout.sources.googleDesc,
   },
   {
     id: "maps",
-    label: "Google Maps",
+    label: t.scout.sources.maps,
     icon: <MapPin className="h-4 w-4" />,
     available: true,
-    description: "Playwright headless Chromium — businesses, addresses, phones",
+    description: t.scout.sources.mapsDesc,
   },
   {
     id: "twitter",
-    label: "Twitter / X",
+    label: t.scout.sources.twitter,
     icon: <Twitter className="h-4 w-4" />,
     available: false,
-    description: "Coming in T4.5 — needs logged-in session cookies",
+    description: t.scout.sources.twitterDesc,
   },
   {
     id: "threads",
-    label: "Threads",
+    label: t.scout.sources.threads,
     icon: <MessagesSquare className="h-4 w-4" />,
     available: false,
-    description: "Coming in T4.5 — needs logged-in session cookies",
+    description: t.scout.sources.threadsDesc,
   },
 ];
 
@@ -95,22 +97,22 @@ const STATUS_BADGE: Record<
   { label: string; className: string }
 > = {
   pending: {
-    label: "Pending",
+    label: t.scout.statusLabels.pending,
     className:
       "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   },
   running: {
-    label: "Running",
+    label: t.scout.statusLabels.running,
     className:
       "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   },
   completed: {
-    label: "Completed",
+    label: t.scout.statusLabels.completed,
     className:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   },
   failed: {
-    label: "Failed",
+    label: t.scout.statusLabels.failed,
     className:
       "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
   },
@@ -128,6 +130,10 @@ export function ScoutPage() {
   const [location, setLocation] = useState("");
   const [maxResults, setMaxResults] = useState(20);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{
+    keywords?: string;
+    location?: string;
+  }>({});
 
   // Data
   const [jobs, setJobs] = useState<ScrapingJob[]>([]);
@@ -225,8 +231,19 @@ export function ScoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Client-side validation (T8.5++++++)
+    setFieldErrors({});
+    const errs: typeof fieldErrors = {};
     if (!keywords.trim()) {
-      toast.error("Keywords required");
+      errs.keywords = formatFieldError("keywords", "required");
+    } else if (keywords.trim().length < 2) {
+      errs.keywords = formatFieldError("keywords", "tooShort", { min: 2 });
+    }
+    if (location && location.length > 100) {
+      errs.location = formatFieldError("location", "tooLong", { max: 100 });
+    }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
     const sourceOpt = SOURCES.find((s) => s.id === source);
@@ -250,9 +267,7 @@ export function ScoutPage() {
       setLocation("");
       setReloadKey((k) => k + 1);
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Failed to create job",
-      );
+      toast.error(formatApiError(e));
     } finally {
       setSubmitting(false);
     }
@@ -261,10 +276,10 @@ export function ScoutPage() {
   const handleRetry = async (id: string) => {
     try {
       await retryScrapingJob(id);
-      toast.success("Job re-queued");
+      toast.success(t.scout.jobRequeued);
       setReloadKey((k) => k + 1);
     } catch {
-      toast.error("Could not retry job");
+      toast.error(t.scout.couldNotRetry);
     }
   };
 
@@ -283,7 +298,7 @@ export function ScoutPage() {
     } catch {
       // Revert on failure
       setJobs(previous);
-      toast.error("Could not delete job");
+      toast.error(t.scout.couldNotDelete);
     }
   };
 
@@ -403,12 +418,17 @@ export function ScoutPage() {
               </div>
 
               {/* Keywords */}
-              <div className="space-y-2">
-                <label htmlFor="keywords" className="text-sm font-medium">
-                  Keywords
-                </label>
+              <FormField
+                label="Kata kunci"
+                required
+                hint={
+                  source === "maps"
+                    ? "Contoh: restoran, kafe, klinik gigi…"
+                    : "Contoh: klinik gigi jakarta, website UMKM…"
+                }
+                error={fieldErrors.keywords}
+              >
                 <Input
-                  id="keywords"
                   placeholder={
                     source === "maps"
                       ? "restoran, kafe, klinik gigi…"
@@ -416,33 +436,29 @@ export function ScoutPage() {
                   }
                   value={keywords}
                   onChange={(e) => setKeywords(e.target.value)}
-                  required
                   disabled={submitting}
                   className="h-10"
                 />
-              </div>
+              </FormField>
 
               {/* Location */}
-              <div className="space-y-2">
-                <label htmlFor="location" className="text-sm font-medium">
-                  Location{" "}
-                  <span className="text-xs text-muted-foreground font-normal">
-                    (optional)
-                  </span>
-                </label>
+              <FormField
+                label="Lokasi"
+                hint="Opsional — kosongkan untuk pencarian global"
+                error={fieldErrors.location}
+              >
                 <Input
-                  id="location"
-                  placeholder="Jakarta, Bandung, Jabodetabek…"
+                  placeholder={t.scout.locationPlaceholder}
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   disabled={submitting}
                   className="h-10"
                 />
-              </div>
+              </FormField>
 
               {/* P2-A4: segmented control instead of slider */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Max results</label>
+                <label className="text-sm font-medium">Jumlah hasil maksimal</label>
                 <div className="flex flex-wrap gap-2">
                   {MAX_RESULTS_OPTIONS.map((n) => (
                     <button
@@ -462,7 +478,7 @@ export function ScoutPage() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Estimated ~{Math.ceil(maxResults / 5)}s search time
+                  Estimasi ~{Math.ceil(maxResults / 5)} detik waktu pencarian
                 </p>
               </div>
 
@@ -498,8 +514,8 @@ export function ScoutPage() {
             </CardTitle>
             <CardDescription>
               {hasActiveJobs
-                ? "Polling every 3s while jobs run…"
-                : "Idle — start a job to see live updates"}
+                ? t.scout.polling
+                : t.scout.idle}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -513,8 +529,8 @@ export function ScoutPage() {
               <EmptyState
                 className="py-6"
                 icon={<Sparkles className="h-5 w-5" />}
-                title="No jobs yet"
-                description="Start your first scout job to see activity here"
+              title={t.scout.noJobs}
+              description={t.scout.noJobsDesc}
               />
             ) : (
               <div className="space-y-2 max-h-[480px] overflow-y-auto -mx-1 px-1">
@@ -558,8 +574,8 @@ export function ScoutPage() {
             <EmptyState
               className="py-8"
               icon={<Globe className="h-5 w-5" />}
-              title="No scout discoveries yet"
-              description="Start a scout job and new prospects will appear here automatically"
+              title={t.scout.noDiscoveries}
+              description={t.scout.noDiscoveriesDesc}
             />
           ) : (
             <div className="overflow-x-auto -mx-6">

@@ -21,6 +21,7 @@ from app.schemas.outreach import (
     MessageListResponse,
     MessageOut,
     MessageUpdate,
+    OutreachStatsOut,
 )
 from app.schemas.templates import (
     TemplateCreate,
@@ -33,6 +34,20 @@ from app.schemas.sequences import (
     SequenceListResponse,
     SequenceOut,
     SequenceUpdate,
+)
+from app.schemas.analytics import (
+    ActivityCount,
+    AnalyticsOverview,
+    AnalyticsRange,
+    ApprovalFunnelStats,
+    ConversionRate,
+    DailyVolume,
+    GradeDistribution,
+    LeadSourceQuality,
+    LLMUsageStats,
+    OutreachChannelStats,
+    PipelineStageCount,
+    TimeToEnrichStats,
 )
 from app.schemas.user import UserCreate, UserInDB, UserOut, UserUpdate
 
@@ -59,6 +74,7 @@ __all__ = [
     "MessageListResponse",
     "MessageOut",
     "MessageUpdate",
+    "OutreachStatsOut",
     "TemplateCreate",
     "TemplateListResponse",
     "TemplateOut",
@@ -67,4 +83,16 @@ __all__ = [
     "SequenceListResponse",
     "SequenceOut",
     "SequenceUpdate",
+    "ActivityCount",
+    "AnalyticsOverview",
+    "AnalyticsRange",
+    "ApprovalFunnelStats",
+    "ConversionRate",
+    "DailyVolume",
+    "GradeDistribution",
+    "LeadSourceQuality",
+    "LLMUsageStats",
+    "OutreachChannelStats",
+    "PipelineStageCount",
+    "TimeToEnrichStats",
 ]

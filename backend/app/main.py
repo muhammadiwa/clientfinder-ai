@@ -1,5 +1,5 @@
 """
-ClientFinder AI Agent — Backend Entry Point (T1 placeholder)
+ClientFinder AI Agent — Backend Entry Point (T8 production-hardened)
 """
 import logging
 import sys
@@ -8,9 +8,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from app.api.v1 import (
     ai,
+    analytics,
     auth,
     outreach,
     prospects,
@@ -20,6 +22,12 @@ from app.api.v1 import (
 )
 from app.core.config import settings
 from app.core.database import close_db, init_db
+from app.core.monitoring import register_monitoring
+from app.core.security import (
+    SecurityHeadersMiddleware,
+    configure_rate_limiter,
+    validate_secrets_at_startup,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -34,11 +42,17 @@ logger = logging.getLogger("clientfinder")
 async def lifespan(app: FastAPI):
     """Application lifecycle."""
     logger.info("Starting ClientFinder AI Agent backend...")
+    logger.info(f"  app_env:   {settings.app_env}")
+    logger.info(f"  app_debug: {settings.app_debug}")
+    logger.info(f"  cors:      {settings.cors_origins_list}")
+    # Validate secrets at boot — fail fast in non-local envs
+    validate_secrets_at_startup()
     yield
     logger.info("Shutting down ClientFinder AI Agent backend...")
     await close_db()
 
 
+# --- App init ---
 app = FastAPI(
     title="ClientFinder AI Agent",
     version="0.1.0",
@@ -49,16 +63,32 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS (open in T1, locked in T2)
+# --- Middleware (order matters: outermost = first added) ---
+# 1. Security headers (outermost, so applies to ALL responses)
+app.add_middleware(SecurityHeadersMiddleware)
+# 2. Metrics (request-level instrumentation)
+register_monitoring(app)
+# 3. CORS (T8: locked-down to specific origins)
+#    Note: CORS middleware adds the CORS headers BEFORE the
+#    response goes through other middlewares.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+    ],
+    max_age=600,  # preflight cache
 )
+# 4. Rate limiting (T8: per-user or per-IP throttling)
+configure_rate_limiter(app)
 
-# Routers
+# --- Routers (v1 API) ---
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(prospects.router, prefix="/api/v1")
 app.include_router(scraping.router, prefix="/api/v1")
@@ -66,45 +96,57 @@ app.include_router(ai.router, prefix="/api/v1")
 app.include_router(outreach.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
 app.include_router(sequences.router, prefix="/api/v1")
+app.include_router(analytics.router, prefix="/api/v1")
 
 
-@app.get("/")
+# --- Legacy / health (T1) ---
+@app.get("/", include_in_schema=False)
 async def root() -> dict:
-    """Root endpoint — sanity check."""
     return {
         "service": "ClientFinder AI Agent",
         "version": "0.1.0",
         "status": "running",
-        "phase": "T1",
+        "phase": "T8 - Production hardening",
         "docs": "/docs",
     }
 
 
-@app.get("/health")
+@app.get("/health", include_in_schema=False)
 async def health() -> dict:
-    """Health check — used by docker healthcheck and load balancers."""
     return {
         "status": "healthy",
         "service": "backend",
     }
 
 
-@app.get("/api/v1/info")
-async def info() -> dict:
-    """App info endpoint."""
-    return {
-        "name": "ClientFinder",
-        "version": "0.1.0",
-        "phase": "T1 - Infrastructure Foundation",
-        "next_milestone": "T2 - Backend Core (DB, Auth, Models)",
-    }
+# --- Error handlers ---
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request, exc):
+    logger.warning("Rate limit hit on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=429,
+        content={
+            "success": False,
+            "error": {
+                "code": "RATE_LIMITED",
+                "message": "Too many requests. Slow down.",
+            },
+        },
+        headers={"Retry-After": "60"},
+    )
 
 
-# Error handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     logger.exception("Unhandled exception: %s", exc)
     return JSONResponse(
         status_code=500,
-        content={"success": False, "error": {"code": "INTERNAL_ERROR", "message": "Internal server error"}},
+        content={
+            "success": False,
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "Internal server error",
+            },
+        },
     )

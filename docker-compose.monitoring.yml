@@ -1,0 +1,91 @@
+# ClientFinder — Optional monitoring stack
+#
+# Use with: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+# This file adds Prometheus + Grafana (and friends) without touching the base stack.
+#
+# Services:
+#   - prometheus:  scrapes /metrics from cf-backend every 15s
+#   - grafana:     web UI at http://localhost:3000 (admin/admin — change first login)
+#   - alertmanager: groups + dedupes alerts (Slack/PagerDuty webhook configurable)
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: cf-prometheus
+    restart: unless-stopped
+    networks:
+      - cf-net
+    volumes:
+      - ./ops/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--storage.tsdb.retention.size=5GB"
+      - "--web.enable-lifecycle"  # POST /-/reload to reload config
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - backend  # cf-backend is in base docker-compose.yml
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: cf-grafana
+    restart: unless-stopped
+    networks:
+      - cf-net
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true   # read-only anonymous access
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./ops/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./ops/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: cf-alertmanager
+    restart: unless-stopped
+    networks:
+      - cf-net
+    volumes:
+      - ./ops/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    ports:
+      - "9093:9093"
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  alertmanager-data:
+
+networks:
+  cf-net:
+    external: true
+    name: cf-net

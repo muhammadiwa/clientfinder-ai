@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 
 import * as authApi from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { formatApiError } from "@/lib/formatError";
+import { t } from "@/i18n/id";
 import type { LoginPayload } from "@/api/auth";
 import type { User } from "@/types";
 
@@ -9,8 +13,9 @@ export function useLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useApiMutation({
     mutationFn: (payload: LoginPayload) => authApi.login(payload),
+    successMessage: t.auth.welcomeBack,
     onSuccess: (data) => {
       const user: User = {
         id: data.user_id,
@@ -28,7 +33,10 @@ export function useLogin() {
 }
 
 export function useRegister() {
-  return useMutation({
+  // Returns the raw mutation so Register can show its own
+  // "navigate to /login" success behavior.
+  // Errors auto-toast via useApiMutation.
+  return useApiMutation({
     mutationFn: authApi.register,
   });
 }
@@ -39,6 +47,15 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: authApi.logout,
+    onSuccess: () => {
+      toast.success(t.auth.signedOut);
+    },
+    onError: (error) => {
+      // Logout failure is non-fatal — show a warning but
+      // still clear local state. The server may have
+      // already invalidated the token.
+      toast.error(formatApiError(error));
+    },
     onSettled: () => {
       clearAuth();
       queryClient.clear();
