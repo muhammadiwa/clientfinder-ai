@@ -218,6 +218,22 @@ async def enrich_prospect(
         prospect.quality_grade = score.grade
         await db.commit()
 
+        # 8.5 Sprint 3B sub-task 3: auto-classify tier + industry.
+        # Heuristic tier is free; industry refinement makes 1 LLM call.
+        # This is idempotent and safe to fail silently — if the LLM
+        # is down, the prospect still has a tier (the heuristic one)
+        # and no industry_specific. Operator can re-classify later.
+        try:
+            from app.services.analyzer.lead_classifier import (
+                classify_and_persist,
+            )
+            await classify_and_persist(db, prospect)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                "orchestrator: classify_and_persist failed for %s: %s",
+                prospect.id, e,
+            )
+
         # 9. Activity log
         db.add(
             Activity(
@@ -326,9 +342,14 @@ async def _upsert_tech_stack(
     # Sprint 1 / Phase 1.2: mobile_friendly + payment_gateways
     # + body_bytes_read all from the lightweight audit. console_errors
     # would come from a future Playwright-based audit (T8.7+).
-    issues_extra = dict(issues) if issues else {}
-    if not site.has_viewport_meta:
-        issues_extra["no_viewport_meta"] = True
+    # BUGFIX: `issues` is a list[str] (built with .append), not a
+    # dict. The previous `dict(issues)` would crash on any non-empty
+    # list of plain strings. Build a single list of all issues.
+    all_issues = list(issues) if issues else []
+    if site.reachable and not site.has_viewport_meta:
+        all_issues.append("no_viewport_meta")
+    if site.reachable and not site.payment_gateways:
+        all_issues.append("no_payment_system")
 
     fields = dict(
         cms=tech.cms,
@@ -341,7 +362,7 @@ async def _upsert_tech_stack(
         page_speed_score=None,
         technologies=technologies,
         security_headers={},
-        issues=issues_extra,
+        issues=all_issues,
         audited_at=datetime.now(timezone.utc),
     )
 

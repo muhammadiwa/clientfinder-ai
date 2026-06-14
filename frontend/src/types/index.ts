@@ -44,6 +44,10 @@ export interface Prospect {
   employee_count?: number | null;
   revenue_estimate?: string | null;
   closing_probability?: number | null;
+  // Sprint 3B: tier + industry classification
+  tier?: "smb" | "mid" | "enterprise" | "unknown" | null;
+  tier_confidence?: number | null;
+  industry_specific?: string | null;
   source: string;
   source_query?: string | null;
   source_url?: string | null;

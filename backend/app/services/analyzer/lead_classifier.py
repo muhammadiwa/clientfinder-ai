@@ -290,3 +290,101 @@ async def classify_industry_deep(
         "confidence": int(parsed.get("confidence", 0)),
         "rationale": str(parsed.get("rationale", ""))[:300],
     }
+
+
+# --- Sprint 3B sub-task 3: persist to prospect (auto-classify helper) ---
+
+
+async def classify_and_persist(
+    db: Any,
+    prospect: Any,
+) -> dict[str, Any]:
+    """Run tier + industry classifiers and persist the result to
+    the prospect row. Idempotent — overwrites previous tier/industry.
+
+    Designed to be called from the orchestrator's enrich step so
+    the lead score has a real tier signal instead of the
+    "unknown" default.
+
+    On LLM failure: tier still gets persisted (heuristic, no LLM),
+    industry_specific stays None.
+    """
+    from sqlalchemy import select
+    from app.models.prospect import TechStack
+
+    # Tier (heuristic, instant)
+    n_signals = 0
+    n_pains = 0
+    try:
+        from app.models.prospect import PainPoint, Signal
+        n_signals = len(
+            (
+                await db.execute(
+                    select(Signal).where(Signal.prospect_id == prospect.id)
+                )
+            ).scalars().all()
+        )
+        n_pains = len(
+            (
+                await db.execute(
+                    select(PainPoint).where(PainPoint.prospect_id == prospect.id)
+                )
+            ).scalars().all()
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    tier_result = classify_tier(
+        employee_count=prospect.employee_count,
+        revenue_estimate=prospect.revenue_estimate,
+        n_signals=n_signals,
+        n_pains=n_pains,
+    )
+
+    # Persist tier immediately (heuristic, no failure mode)
+    prospect.tier = tier_result["tier"]
+    prospect.tier_confidence = tier_result["confidence"]
+
+    # Industry deep (LLM) — best-effort, never raises
+    ind_result = {
+        "industry_specific": "unknown",
+        "industry_category": prospect.industry or "umum",
+        "confidence": 0,
+        "rationale": "skipped (no DB or no tech stack)",
+    }
+    try:
+        tech = (
+            await db.execute(
+                select(TechStack).where(TechStack.prospect_id == prospect.id)
+            )
+        ).scalar_one_or_none()
+        website_snippet = ""
+        if tech:
+            website_snippet = (
+                (tech.extra_metadata or {}).get("page_title", "")
+                or (tech.extra_metadata or {}).get("description", "")
+            )
+        ind_result = await classify_industry_deep(
+            company_name=prospect.company_name or "",
+            current_industry=prospect.industry,
+            location=prospect.location_city,
+            website_snippet=website_snippet,
+            description=prospect.description,
+            owner_name=prospect.owner_name,
+        )
+    except Exception as e:  # noqa: BLE001
+        # LLM failures must not break the tier persistence —
+        # operator can re-classify later via the manual endpoint
+        logger.warning(
+            "classify_and_persist: industry LLM failed for %s: %s",
+            prospect.id, e,
+        )
+    # Persist industry_specific only if LLM was confident enough
+    if ind_result["industry_specific"] and ind_result["industry_specific"] != "unknown":
+        if ind_result.get("confidence", 0) >= 50:
+            prospect.industry_specific = ind_result["industry_specific"][:255]
+    await db.commit()
+    return {
+        "tier": tier_result,
+        "industry": ind_result,
+    }
