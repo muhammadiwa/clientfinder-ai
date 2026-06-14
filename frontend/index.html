@@ -10,40 +10,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- T8.5++++++: Suppress recharts EventEmitter MaxListenersExceededWarning
-         recharts uses a single global EventEmitter per chart (the
-         "ObjectMultiplex" + liveness streams). On a page with 2+ recharts
-         charts, 11+ listeners get added to the same emitter, triggering
-         Node.js's "Possible memory leak" warning. The fix: patch
-         setMaxListeners on the global process (Node/Vite-served pages)
-         AND the browser's events.EventEmitter (if available). -->
-    <script>
-      (function () {
-        try {
-          // Suppress Node.js EventEmitter (Vite dev, SSR, etc.)
-          if (typeof process !== "undefined" && process.setMaxListeners) {
-            process.setMaxListeners(100);
-          }
-        } catch (_) {}
-        try {
-          // Suppress browser EventEmitter (Vite HMR + recharts sync)
-          if (typeof window !== "undefined" && window.EventEmitter &&
-              window.EventEmitter.prototype) {
-            window.EventEmitter.defaultMaxListeners = 100;
-          }
-        } catch (_) {}
-        // Also try to find the global EventEmitter via webpack
-        // runtime (Vite puts Node polyfills here in dev)
-        try {
-          var EventEmitter = (function () {
-            try { return globalThis.EventEmitter || window.EventEmitter; }
-            catch (_) { return null; }
-          })();
-          if (EventEmitter && EventEmitter.prototype) {
-            EventEmitter.defaultMaxListeners = 100;
-          }
-        } catch (_) {}
-      })();
-    </script>
   </body>
 </html>
