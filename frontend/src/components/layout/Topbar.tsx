@@ -35,7 +35,14 @@ const routeLabels: Record<string, string> = {
   settings: "Settings",
 };
 
-export function Topbar() {
+interface TopbarProps {
+  onShowHelp?: () => void;
+}
+
+export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
+  // onShowHelp is wired in Layout via global keyboard shortcuts (?).
+  // Kept as a prop for future topbar-level "?" button.
+  void _onShowHelp;
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
