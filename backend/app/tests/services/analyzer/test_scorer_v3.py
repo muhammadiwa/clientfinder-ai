@@ -165,8 +165,11 @@ class TestRiskPenalty:
 
 class TestComputeScoreIntegration:
     def test_weights_sum_to_one(self):
+        # Sprint 3B: weights now sum to 0.95 (with 0.05 headroom
+        # for future factors). The 2 new factors (tier, industry_specificity)
+        # each contribute 0.05.
         from app.services.analyzer.scorer import WEIGHTS
-        assert abs(sum(WEIGHTS.values()) - 1.0) < 1e-6
+        assert abs(sum(WEIGHTS.values()) - 0.95) < 1e-6
 
     def test_hot_lead(self):
         """A real klinik in Jakarta with full data + specific pains."""
