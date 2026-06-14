@@ -10,6 +10,12 @@ Detects:
   - no_pos: F&B / retail but no POS hint
   - no_gbp: Google Business Profile missing (we don't check this
     here, but the rule exists for future enrichment)
+  - no_email: no business email listed
+  - no_phone: no phone number
+  - no_mobile_friendly: no <meta name="viewport"> tag (Sprint 1 / Phase 1.2)
+  - has_console_errors: JS console errors on the page (Sprint 1 / Phase 1.2)
+  - no_payment_system: no payment gateway detected on the site
+    (Sprint 1 / Phase 1.2)
 
 Each pain has:
   - kind: machine identifier
@@ -48,6 +54,10 @@ def detect_pains(
     has_pos: bool = False,
     response_time_ms: int | None = None,
     has_ssl: bool = True,
+    # Sprint 1 / Phase 1.2 — 3 new audit signals
+    has_viewport_meta: bool = True,
+    payment_gateways: list[str] | None = None,
+    console_errors: list[str] | None = None,
 ) -> list[dict]:
     """
     Run heuristic pain detection on a prospect.
@@ -57,6 +67,8 @@ def detect_pains(
     """
     pains: list[Pain] = []
     industry_key = (industry or "").lower().strip()
+    payment_gateways = payment_gateways or []
+    console_errors = console_errors or []
 
     # Rule 1: No website at all
     if not website:
@@ -183,6 +195,77 @@ def detect_pains(
                 ),
                 recommended_service="gmb_setup",
                 evidence={},
+            )
+        )
+
+    # ----- Sprint 1 / Phase 1.2: 3 new audit signals -----
+
+    # Rule 9: No mobile-friendly viewport meta tag
+    # Default to True so legacy callers (without the new param) don't
+    # trip the rule by accident. When called with has_viewport_meta=False,
+    # we add the pain.
+    if not has_viewport_meta:
+        pains.append(
+            Pain(
+                kind="no_mobile_friendly",
+                severity=70,
+                title="Website tidak mobile-friendly",
+                description=(
+                    "Tanpa <meta name='viewport'>, website tidak responsive di mobile. "
+                    "75% traffic UMKM Indonesia dari HP, dan bounce rate naik "
+                    "3x lipat untuk site yang tidak mobile-friendly."
+                ),
+                recommended_service="responsive_redesign",
+                evidence={"signal": "no_viewport_meta"},
+            )
+        )
+
+    # Rule 10: Console errors detected on the page
+    # Only fire if there are multiple (1 transient error is normal;
+    # 3+ suggests a broken page)
+    if len(console_errors) >= 3:
+        pains.append(
+            Pain(
+                kind="has_console_errors",
+                severity=45,
+                title=f"{len(console_errors)} console errors",
+                description=(
+                    f"Halaman memunculkan {len(console_errors)} error JavaScript. "
+                    "Kemungkinan: resource 404, library conflict, atau "
+                    "script error. Menurunkan trust + UX."
+                ),
+                recommended_service="frontend_debug",
+                evidence={
+                    "n_errors": len(console_errors),
+                    "sample": console_errors[:5],
+                },
+            )
+        )
+
+    # Rule 11: No payment gateway detected (for relevant industries)
+    # E-commerce / F&B / retail benefit from online payment. If they
+    # have a website but no payment gateway, they're losing potential
+    # online sales.
+    ecommerce_industries = {
+        "restoran", "kafe", "fnb", "minimarket", "toko", "klinik",
+        "salon", "spa", "fitness", "apotek", "retail", "online",
+    }
+    if (
+        any(k in industry_key for k in ecommerce_industries)
+        and not payment_gateways
+    ):
+        pains.append(
+            Pain(
+                kind="no_payment_system",
+                severity=60,
+                title="Tidak ada payment gateway",
+                description=(
+                    f"Bisnis {industry} tanpa payment gateway online "
+                    "(Midtrans, Xendit, Stripe, dll) kehilangan customer "
+                    "yang mau bayar via QRIS / e-wallet / transfer."
+                ),
+                recommended_service="payment_integration",
+                evidence={"industry": industry, "gateways_found": []},
             )
         )
 
