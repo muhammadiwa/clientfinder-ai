@@ -337,10 +337,16 @@ export function OutreachPage() {
 
   const handleApprove = async (id: string) => {
     setBusyId(id);
+    // T8.5+++++++ (mirror): optimistic UI for single approve.
+    // Removes the message from the pending tab INSTANTLY
+    // (the user sees the green Approve button flip to
+    // "approved" status the moment they click), reverts
+    // on error.
     try {
-      await approveMessage(id, { approve: true });
+      await applyOptimistic([id], async () => {
+        await approveMessage(id, { approve: true });
+      });
       toast.success(t.outreach.approvedToast);
-      reload();
     } catch {
       toast.error(t.outreach.approvalFailed);
     } finally {
