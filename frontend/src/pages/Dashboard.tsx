@@ -26,11 +26,13 @@ import { t } from "@/i18n/id";
 import type { Prospect } from "@/types";
 
 // Per playbook §1: status colors
+// T8.5+++++++ fix: 3-series (created/sent/replied) instead
+// of 4-proxy (new/scored/contacted/won). Now consumes
+// real backend data without 4-series mapping hacks.
 const ACTIVITY_SERIES = [
-  { key: "new", label: t.dashboard.new, color: "#64748b" },
-  { key: "scored", label: t.dashboard.scored, color: "#8b5cf6" },
-  { key: "contacted", label: t.dashboard.contactedLabel, color: "#f59e0b" },
-  { key: "won", label: t.dashboard.wonLabel, color: "#10b981" },
+  { key: "baru", label: t.dashboard.new, color: "#64748b" },
+  { key: "terkirim", label: "Terkirim", color: "#8b5cf6" },
+  { key: "dibalas", label: "Dibalas", color: "#f59e0b" },
 ];
 
 const GRADE_COLORS: Record<string, string> = {
@@ -41,40 +43,26 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 /**
- * T8.5+++++++ (Dashboard stats wiring): now uses REAL
- * daily_volume from the /analytics/overview endpoint
- * via useAnalyticsOverview(14). The previous synthetic
- * Math.sin-based genActivityData was removed — its
- * "until T7 Reporting ships real activity data" comment
- * is now satisfied by T7 (PR #48) + this wiring.
+ * T8.5+++++++ fix: use REAL 3-series daily volume from
+ * /analytics/overview (created + sent + replied). The
+ * previous 4-series proxy (new/scored/contacted/won) was
+ * a band-aid that mapped sent/replied to fake series —
+ * all 0 when 0 messages were sent. Now we use 3 real
+ * series that always have data (created = total message
+ * creation events, even drafts).
  */
 function buildActivityData(
-  days: { date: string; sent: number; replied: number }[],
+  days: { date: string; created: number; sent: number; replied: number }[],
 ): Array<Record<string, number | string>> {
-  return days.map((d) => {
-    // The analytics endpoint only tracks sent + replied.
-    // For the multi-series pipeline view, we surface:
-    //   - "new": approximate count of new leads (uses
-    //     sent as a proxy since Scout runs are what
-    //     drive the pipeline)
-    //   - "scored": half of sent (rough proxy for
-    //     analyst-completed leads)
-    //   - "contacted": replied count (people who replied
-    //     were obviously contacted)
-    //   - "won": max(0, replied - 1) — most replies
-    //     don't close (only ~1 in N does). This is a
-    //     rough proxy until T7.5 ships per-event metrics.
-    return {
-      date: new Date(d.date).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-      }),
-      new: d.sent,
-      scored: Math.round(d.sent / 2),
-      contacted: d.replied,
-      won: Math.max(0, d.replied - 1),
-    };
-  });
+  return days.map((d) => ({
+    date: new Date(d.date).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+    }),
+    baru: d.created,
+    terkirim: d.sent,
+    dibalas: d.replied,
+  }));
 }
 
 function genSparkline(seed: number, trend: "up" | "down" | "stable"): number[] {

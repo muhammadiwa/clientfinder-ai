@@ -52,9 +52,25 @@ class OutreachChannelStats(BaseModel):
 
 
 class DailyVolume(BaseModel):
-    """Volume per day for the last N days (sparkline data)."""
+    """Volume per day for the last N days (sparkline data).
+
+    3 series so the chart always has real data:
+    - created: total message CREATION events (all statuses,
+      filtered by created_at). Shows pipeline activity
+      even before any sends.
+    - sent: messages that were SENT (status in sent/delivered/
+      opened/clicked/replied). Shows outbound activity.
+    - replied: messages that received a REPLY. Shows
+      engagement.
+
+    T8.5+++++++ fix: previous schema only had `sent` + `replied`
+    which meant the chart was all zeros when 0 messages
+    had been sent yet. Now `created` always reflects actual
+    pipeline activity (R10 review queue creation, drafts, etc).
+    """
 
     date: str  # YYYY-MM-DD
+    created: int
     sent: int
     replied: int
 
