@@ -38,7 +38,7 @@ import {
   type ScrapingPreset,
 } from "@/api/scouting";
 import { useProspects } from "@/hooks/useProspects";
-import { t } from "@/i18n/id";
+import { getT, useT } from "@/i18n/id";
 import { formatApiError, formatFieldError } from "@/lib/formatError";
 import {
   analyzeProspect,
@@ -64,31 +64,31 @@ interface SourceOption {
 const SOURCES: SourceOption[] = [
   {
     id: "google",
-    label: t.scout.sources.google,
+    label: getT().scout.sources.google,
     icon: <Globe className="h-4 w-4" />,
     available: true,
-    description: t.scout.sources.googleDesc,
+    description: getT().scout.sources.googleDesc,
   },
   {
     id: "maps",
-    label: t.scout.sources.maps,
+    label: getT().scout.sources.maps,
     icon: <MapPin className="h-4 w-4" />,
     available: true,
-    description: t.scout.sources.mapsDesc,
+    description: getT().scout.sources.mapsDesc,
   },
   {
     id: "twitter",
-    label: t.scout.sources.twitter,
+    label: getT().scout.sources.twitter,
     icon: <Twitter className="h-4 w-4" />,
     available: false,
-    description: t.scout.sources.twitterDesc,
+    description: getT().scout.sources.twitterDesc,
   },
   {
     id: "threads",
-    label: t.scout.sources.threads,
+    label: getT().scout.sources.threads,
     icon: <MessagesSquare className="h-4 w-4" />,
     available: false,
-    description: t.scout.sources.threadsDesc,
+    description: getT().scout.sources.threadsDesc,
   },
 ];
 
@@ -97,22 +97,22 @@ const STATUS_BADGE: Record<
   { label: string; className: string }
 > = {
   pending: {
-    label: t.scout.statusLabels.pending,
+    label: getT().scout.statusLabels.pending,
     className:
       "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   },
   running: {
-    label: t.scout.statusLabels.running,
+    label: getT().scout.statusLabels.running,
     className:
       "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   },
   completed: {
-    label: t.scout.statusLabels.completed,
+    label: getT().scout.statusLabels.completed,
     className:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   },
   failed: {
-    label: t.scout.statusLabels.failed,
+    label: getT().scout.statusLabels.failed,
     className:
       "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
   },
@@ -124,6 +124,7 @@ const POLL_INTERVAL_MS = 3_000;
 const MAX_RESULTS_OPTIONS = [5, 10, 20, 35, 50] as const;
 
 export function ScoutPage() {
+  const t = useT();
   // Form state
   const [source, setSource] = useState<ScrapingSource>("google");
   const [keywords, setKeywords] = useState("");
@@ -623,6 +624,7 @@ interface JobRowProps {
 }
 
 function JobRow({ job, onRetry, onDelete }: JobRowProps) {
+  const t = useT();
   const status = STATUS_BADGE[job.status] ?? STATUS_BADGE.pending;
   const statusIcon = (() => {
     switch (job.status) {

@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores/auth";
 import { useMe } from "@/hooks/useAuth";
-import { t } from "@/i18n/id";
+import { useT } from "@/i18n/id";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Mail, ShieldCheck, User, Pencil, Clock, KeyRound } from "lucide-react";
  * for groups, sticky submit button at bottom (when editable).
  */
 export function ProfileSection() {
+  const t = useT();
   const user = useAuthStore((s) => s.user);
   const me = useMe(true);
 

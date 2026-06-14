@@ -28,13 +28,13 @@ import {
   MenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { t } from "@/i18n/id";
+import { useT, getT } from "@/i18n/id";
 
 const routeLabels: Record<string, string> = {
-  dashboard: t.nav.dashboard,
-  prospects: t.nav.prospects,
-  pipeline: t.nav.pipeline,
-  settings: t.nav.settings,
+  dashboard: getT().nav.dashboard,
+  prospects: getT().nav.prospects,
+  pipeline: getT().nav.pipeline,
+  settings: getT().nav.settings,
 };
 
 interface TopbarProps {
@@ -42,6 +42,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
+  const t = useT();
   // onShowHelp is wired in Layout via global keyboard shortcuts (?).
   // Kept as a prop for future topbar-level "?" button.
   void _onShowHelp;
