@@ -51,28 +51,31 @@ class OutreachChannelStats(BaseModel):
     approval_rate: float  # approved / (drafts + pending)
 
 
-class DailyVolume(BaseModel):
-    """Volume per day for the last N days (sparkline data).
+class DailyPipeline(BaseModel):
+    """Prospect pipeline activity per day (sparkline data).
 
-    3 series so the chart always has real data:
-    - created: total message CREATION events (all statuses,
-      filtered by created_at). Shows pipeline activity
-      even before any sends.
-    - sent: messages that were SENT (status in sent/delivered/
-      opened/clicked/replied). Shows outbound activity.
-    - replied: messages that received a REPLY. Shows
-      engagement.
+    T8.5+++++++ (telemetry fix): this is the CORRECT
+    schema for the 'Aktivitas pipeline' Dashboard chart.
+    Tracks PROSPECT pipeline events (not outreach events).
 
-    T8.5+++++++ fix: previous schema only had `sent` + `replied`
-    which meant the chart was all zeros when 0 messages
-    had been sent yet. Now `created` always reflects actual
-    pipeline activity (R10 review queue creation, drafts, etc).
+    4 series mapped to prospect pipeline stages:
+    - baru (new): count of prospect_created actions
+    - dinilai (scored): count of analysis_completed +
+      prospect_enriched actions (T5 analyst pipeline)
+    - dihubungi (contacted): count of prospect_updated
+      actions where details.status='contacted'
+    - menang (won): count of prospect_updated actions
+      where details.status='won'
+
+    Source of truth: the 'activities' table. Each action
+    event has a created_at (the day) + optional details.
     """
 
     date: str  # YYYY-MM-DD
-    created: int
-    sent: int
-    replied: int
+    baru: int
+    dinilai: int
+    dihubungi: int
+    menang: int
 
 
 class ApprovalFunnelStats(BaseModel):
@@ -150,7 +153,7 @@ class AnalyticsOverview(BaseModel):
     total_messages_sent: int
     outreach_by_channel: list[OutreachChannelStats]
     approval_funnel: ApprovalFunnelStats
-    daily_volume: list[DailyVolume]  # last 30 days for sparkline
+    daily_volume: list[DailyPipeline]  # last 30 days for sparkline
 
     # Pipeline (C)
     pipeline_by_stage: list[PipelineStageCount]

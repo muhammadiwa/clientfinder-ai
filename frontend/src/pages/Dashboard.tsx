@@ -26,13 +26,16 @@ import { t } from "@/i18n/id";
 import type { Prospect } from "@/types";
 
 // Per playbook §1: status colors
-// T8.5+++++++ fix: 3-series (created/sent/replied) instead
-// of 4-proxy (new/scored/contacted/won). Now consumes
-// real backend data without 4-series mapping hacks.
+// T8.5+++++++ (telemetry fix): 4-series PROSPECT pipeline
+// (baru/dinilai/dihubungi/menang) sourced from the
+// activity log. Replaces the previous incorrect mapping
+// to outreach events (created/sent/replied) from PR #74
+// (which confused pipeline activity with outreach activity).
 const ACTIVITY_SERIES = [
-  { key: "baru", label: t.dashboard.new, color: "#64748b" },
-  { key: "terkirim", label: "Terkirim", color: "#8b5cf6" },
-  { key: "dibalas", label: "Dibalas", color: "#f59e0b" },
+  { key: "baru", label: "Baru", color: "#64748b" },
+  { key: "dinilai", label: "Dinilai", color: "#8b5cf6" },
+  { key: "dihubungi", label: "Dihubungi", color: "#f59e0b" },
+  { key: "menang", label: "Menang", color: "#10b981" },
 ];
 
 const GRADE_COLORS: Record<string, string> = {
@@ -43,25 +46,27 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 /**
- * T8.5+++++++ fix: use REAL 3-series daily volume from
- * /analytics/overview (created + sent + replied). The
- * previous 4-series proxy (new/scored/contacted/won) was
- * a band-aid that mapped sent/replied to fake series —
- * all 0 when 0 messages were sent. Now we use 3 real
- * series that always have data (created = total message
- * creation events, even drafts).
+ * T8.5+++++++ (telemetry fix): consumes REAL 4-series
+ * PROSPECT pipeline data from the activity log
+ * (baru/dinilai/dihubungi/menang). The previous 3-series
+ * (created/sent/replied) was OUTREACH events, not
+ * pipeline events — that was a conceptual error. This
+ * is the correct mapping for the 'Aktivitas pipeline'
+ * Dashboard chart (which is for the PROSPECT pipeline,
+ * not the outreach message pipeline).
  */
 function buildActivityData(
-  days: { date: string; created: number; sent: number; replied: number }[],
+  days: { date: string; baru: number; dinilai: number; dihubungi: number; menang: number }[],
 ): Array<Record<string, number | string>> {
   return days.map((d) => ({
     date: new Date(d.date).toLocaleDateString("id-ID", {
       day: "numeric",
       month: "short",
     }),
-    baru: d.created,
-    terkirim: d.sent,
-    dibalas: d.replied,
+    baru: d.baru,
+    dinilai: d.dinilai,
+    dihubungi: d.dihubungi,
+    menang: d.menang,
   }));
 }
 

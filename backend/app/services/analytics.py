@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import case, desc, func, select
+from sqlalchemy import String, case, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -27,7 +27,7 @@ from app.schemas.analytics import (
     AnalyticsRange,
     ApprovalFunnelStats,
     ConversionRate,
-    DailyVolume,
+    DailyPipeline,
     GradeDistribution,
     LeadSourceQuality,
     LLMUsageStats,
@@ -398,17 +398,30 @@ async def _compute_time_to_enrich(
 
 async def _compute_daily_volume(
     db: AsyncSession, start: datetime
-) -> list[DailyVolume]:
-    """3-series daily volume for the sparkline:
-    - created: total message CREATION events (by created_at)
-    - sent: messages that were SENT (by sent_at)
-    - replied: messages that received a reply
+) -> list[DailyPipeline]:
+    """Prospect pipeline activity per day.
 
-    T8.5+++++++ fix: added `created` series so the chart
-    has real data even when 0 messages have been sent
-    (the previous version only tracked sent_at, which
-    is null until the message is actually dispatched).
-    The 3-series view shows the full pipeline flow.
+    T8.5+++++++ (telemetry fix): this now tracks
+    PROSPECT pipeline events (not outreach message
+    events) since the 'Aktivitas pipeline' chart on
+    the Dashboard is for the prospect pipeline
+    (Klinik/F&B → scored → contacted → won), not the
+    outreach message pipeline.
+
+    Source of truth: the 'activities' table (audit log
+    of prospect + outreach events).
+
+    4 series mapped to prospect pipeline stages:
+    - baru (new): prospect_created action
+    - dinilai (scored): analysis_completed +
+      prospect_enriched actions (T5 analyst pipeline)
+    - dihubungi (contacted): prospect_updated action
+      with details.status='contacted'
+    - menang (won): prospect_updated action with
+      details.status='won'
+
+    Returns 1 entry per day in range, with 0s when
+    no activity.
     """
     end = datetime.now(timezone.utc)
     days: list[datetime] = []
@@ -416,57 +429,84 @@ async def _compute_daily_volume(
     while cur <= end:
         days.append(cur)
         cur = cur + timedelta(days=1)
-    # Query created (by created_at) + sent + replied per day.
-    # Use UNION ALL to keep the SQL simple — 3 separate
-    # GROUP BY queries on (date, action).
-    # Query 1: created events (by created_at, all statuses)
-    created_q = select(
-        func.date(Message.created_at).label("d"),
-        func.count(Message.id).label("count"),
+
+    # Query 1: baru (new) — prospect_created actions
+    baru_q = select(
+        func.date(Activity.created_at).label("d"),
+        func.count(Activity.id).label("count"),
     ).where(
-        Message.created_at >= start,
-    ).group_by(func.date(Message.created_at))
-    created_rows = (await db.execute(created_q)).all()
-    # Query 2: sent events (by sent_at)
-    sent_q = select(
-        func.date(Message.sent_at).label("d"),
-        func.count(Message.id).label("sent"),
+        Activity.created_at >= start,
+        Activity.action == "prospect_created",
+    ).group_by(func.date(Activity.created_at))
+    baru_rows = (await db.execute(baru_q)).all()
+    # Query 2: dinilai (scored) — analysis_completed +
+    # prospect_enriched actions
+    dinilai_q = select(
+        func.date(Activity.created_at).label("d"),
+        func.count(Activity.id).label("count"),
     ).where(
-        Message.sent_at >= start,
-        Message.status.in_(
-            ("sent", "delivered", "opened", "clicked", "replied")
-        ),
-    ).group_by(func.date(Message.sent_at))
-    sent_rows = (await db.execute(sent_q)).all()
-    # Query 3: replied events (by sent_at, status=replied)
-    replied_q = select(
-        func.date(Message.sent_at).label("d"),
-        func.count(Message.id).label("replied"),
+        Activity.created_at >= start,
+        Activity.action.in_(("analysis_completed", "prospect_enriched")),
+    ).group_by(func.date(Activity.created_at))
+    dinilai_rows = (await db.execute(dinilai_q)).all()
+    # Query 3: dihubungi (contacted) — prospect_updated
+    # actions where details->>'status' = 'contacted'.
+    # Postgres JSONB path: details::text LIKE '%...%' is
+    # fragile; use ->> operator.
+    dihubungi_q = select(
+        func.date(Activity.created_at).label("d"),
+        func.count(Activity.id).label("count"),
     ).where(
-        Message.sent_at >= start,
-        Message.status == "replied",
-    ).group_by(func.date(Message.sent_at))
-    replied_rows = (await db.execute(replied_q)).all()
+        Activity.created_at >= start,
+        Activity.action == "prospect_updated",
+        # Cast to text + LIKE for cross-DB compatibility
+        # (SQLite test DB, Postgres prod). For Postgres
+        # production, use func.jsonb_extract_path_text.
+        func.cast(Activity.details, String).like('%"status": "contacted"%'),
+    ).group_by(func.date(Activity.created_at))
+    try:
+        dihubungi_rows = (await db.execute(dihubungi_q)).all()
+    except Exception:
+        # Fallback: skip this series (set all to 0)
+        dihubungi_rows = []
+    # Query 4: menang (won) — prospect_updated actions
+    # where details->>'status' = 'won'
+    menang_q = select(
+        func.date(Activity.created_at).label("d"),
+        func.count(Activity.id).label("count"),
+    ).where(
+        Activity.created_at >= start,
+        Activity.action == "prospect_updated",
+        func.cast(Activity.details, String).like('%"status": "won"%'),
+    ).group_by(func.date(Activity.created_at))
+    try:
+        menang_rows = (await db.execute(menang_q)).all()
+    except Exception:
+        menang_rows = []
     # Merge into per-day dict
     by_date: dict[str, dict[str, int]] = {}
-    for d, count in created_rows:
-        by_date[str(d)] = {"created": int(count or 0), "sent": 0, "replied": 0}
-    for d, sent in sent_rows:
-        by_date.setdefault(str(d), {"created": 0, "sent": 0, "replied": 0})
-        by_date[str(d)]["sent"] = int(sent or 0)
-    for d, replied in replied_rows:
-        by_date.setdefault(str(d), {"created": 0, "sent": 0, "replied": 0})
-        by_date[str(d)]["replied"] = int(replied or 0)
+    for d, count in baru_rows:
+        by_date[str(d)] = {"baru": int(count or 0), "dinilai": 0, "dihubungi": 0, "menang": 0}
+    for d, count in dinilai_rows:
+        by_date.setdefault(str(d), {"baru": 0, "dinilai": 0, "dihubungi": 0, "menang": 0})
+        by_date[str(d)]["dinilai"] = int(count or 0)
+    for d, count in dihubungi_rows:
+        by_date.setdefault(str(d), {"baru": 0, "dinilai": 0, "dihubungi": 0, "menang": 0})
+        by_date[str(d)]["dihubungi"] = int(count or 0)
+    for d, count in menang_rows:
+        by_date.setdefault(str(d), {"baru": 0, "dinilai": 0, "dihubungi": 0, "menang": 0})
+        by_date[str(d)]["menang"] = int(count or 0)
     # Build output for every day in range (fill missing with 0)
-    out: list[DailyVolume] = []
+    out: list[DailyPipeline] = []
     for d in days:
-        v = by_date.get(d.strftime("%Y-%m-%d"), {"created": 0, "sent": 0, "replied": 0})
+        v = by_date.get(d.strftime("%Y-%m-%d"), {"baru": 0, "dinilai": 0, "dihubungi": 0, "menang": 0})
         out.append(
-            DailyVolume(
+            DailyPipeline(
                 date=d.strftime("%Y-%m-%d"),
-                created=v["created"],
-                sent=v["sent"],
-                replied=v["replied"],
+                baru=v["baru"],
+                dinilai=v["dinilai"],
+                dihubungi=v["dihubungi"],
+                menang=v["menang"],
             )
         )
     return out
