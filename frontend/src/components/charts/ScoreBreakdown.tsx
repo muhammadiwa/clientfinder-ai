@@ -6,6 +6,8 @@ export interface ScoreFactor {
   label: string;
   value: number; // 0-100
   description?: string;
+  /** If true, value is rendered as a penalty (red, "-N"). Bar shows |value|. */
+  inverted?: boolean;
 }
 
 interface ScoreBreakdownChartProps {
@@ -84,8 +86,16 @@ export function ScoreBreakdownChart({
       {/* Factor bars (right) */}
       <div className="space-y-3">
         {factors.map((factor) => {
-          const color = getScoreColor(factor.value);
-          const pct = Math.max(0, Math.min(100, factor.value));
+          const displayValue = factor.inverted
+            ? -Math.abs(factor.value)
+            : factor.value;
+          const color = factor.inverted
+            ? {
+                textClass: "text-rose-600",
+                barClass: "bg-gradient-to-r from-rose-500 to-rose-400",
+              }
+            : getScoreColor(factor.value);
+          const pct = Math.max(0, Math.min(100, Math.abs(factor.value)));
           return (
             <div key={factor.key} className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
@@ -105,7 +115,8 @@ export function ScoreBreakdownChart({
                     color.textClass,
                   )}
                 >
-                  {Math.round(factor.value)}
+                  {displayValue > 0 ? "+" : ""}
+                  {Math.round(displayValue)}
                 </span>
               </div>
               <div className="relative h-2 bg-muted/60 rounded-full overflow-hidden">

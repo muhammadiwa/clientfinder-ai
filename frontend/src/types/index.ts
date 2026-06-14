@@ -39,6 +39,11 @@ export interface Prospect {
   email?: string | null;
   social_links: Record<string, unknown>;
   description?: string | null;
+  // Sprint 1 (T5 v3) / brief
+  owner_name?: string | null;
+  employee_count?: number | null;
+  revenue_estimate?: string | null;
+  closing_probability?: number | null;
   source: string;
   source_query?: string | null;
   source_url?: string | null;
