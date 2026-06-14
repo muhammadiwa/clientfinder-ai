@@ -74,6 +74,10 @@ class ProspectOut(ProspectBase):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
+    # Sprint 3B
+    tier: str | None
+    tier_confidence: float | None
+    industry_specific: str | None
 
 
 class ProspectListResponse(BaseModel):

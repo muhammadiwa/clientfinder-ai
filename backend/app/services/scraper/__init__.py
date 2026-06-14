@@ -14,8 +14,12 @@ from app.core.config import settings
 from app.models.prospect import Prospect
 from app.services.scraper.base import BaseScraper, ScrapedResult
 from app.services.scraper.google import GoogleSearchScraper
+from app.services.scraper.google_places import GooglePlacesScraper
 from app.services.scraper.maps import GoogleMapsScraper
-from app.services.scraper.twitter import ThreadsScraper, TwitterScraper
+from app.services.scraper.threads import ThreadsScraper
+from app.services.scraper.tokopedia import TokopediaScraper
+from app.services.scraper.twitter import TwitterScraper
+from app.services.scraper.yelp import YelpScraper
 
 logger = logging.getLogger("clientfinder.scraper")
 
@@ -23,9 +27,12 @@ logger = logging.getLogger("clientfinder.scraper")
 # Scraper registry — source name → class
 _SCRAPERS: dict[str, type[BaseScraper]] = {
     "google": GoogleSearchScraper,
+    "google_places": GooglePlacesScraper,  # Sprint 3C
     "maps": GoogleMapsScraper,
     "twitter": TwitterScraper,
     "threads": ThreadsScraper,
+    "tokopedia": TokopediaScraper,  # Sprint 3C
+    "yelp": YelpScraper,  # Sprint 3C
 }
 
 
@@ -36,6 +43,10 @@ def get_scraper(source: str, **kwargs: Any) -> BaseScraper:
         raise ValueError(f"Unknown scraper source: {source}")
     if source == "google":
         return cls(base_url=settings.searxng_base_url, **kwargs)
+    if source == "google_places":
+        return cls(api_key=settings.google_places_api_key, **kwargs)
+    if source == "yelp":
+        return cls(api_key=settings.yelp_api_key, **kwargs)
     return cls(**kwargs)
 
 

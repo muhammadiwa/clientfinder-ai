@@ -51,6 +51,21 @@ class Prospect(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     # 0-100, separate from lead_score (which is a quality score);
     # this is the user's own forecast of likely-to-close, editable
 
+    # Sprint 3B: tier + industry classification (persisted)
+    tier: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, index=True
+    )
+    # one of "smb" | "mid" | "enterprise" | "unknown"
+    tier_confidence: Mapped[float | None] = mapped_column(
+        nullable=True
+    )
+    # 0.0-1.0; the heuristic classifier's confidence
+    industry_specific: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    # LLM-refined industry subcategory (e.g. "klinik gigi" instead
+    # of just "klinik") — nullable until classify() runs
+
     # Source tracking
     source: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     # google, maps, twitter, threads, manual, import

@@ -14,49 +14,22 @@ export interface ProspectFilters {
 }
 
 export interface ProspectDetailResponse {
-  prospect: Prospect;
-  tech_stack: {
-    cms: string | null;
-    framework: string | null;
-    hosting_provider: string | null;
-    has_ssl: boolean | null;
-    page_speed_score: number | null;
-    technologies: string[];
-    issues: string[];
-    audited_at: string | null;
-  } | null;
-  pain_points: {
-    id: string;
-    category: string;
-    severity: string;
-    description: string;
-    evidence_quote: string | null;
-    source: string | null;
-    detected_at: string;
-  }[];
-  lead_score: {
-    signal_strength: number;
-    pain_severity: number;
-    budget_indicator: number;
-    solution_fit: number;
-    timing_urgency: number;
-    // Sprint 1 (T5 v3) / brief: 3 new factors
-    contact_availability: number;
-    personalization_quality: number;
-    risk_penalty: number;
-    total_score: number;
-    grade: string;
-    reasoning: string | null;
-    scored_at: string;
-  } | null;
-  hooks: {
-    id: string;
-    hook_text: string;
-    audit_finding: string | null;
-    recommended_service: string | null;
-    confidence: number;
-    is_used: string;
-  }[];
+  prospect: ProspectItem;
+  tech_stack: TechStackData | null;
+  pain_points: PainPointItem[];
+  lead_score: LeadScoreData | null;
+  hooks: HookItem[];
+  signals: SignalItem[];
+}
+
+export interface SignalItem {
+  id: string;
+  signal_type: string;
+  source: string;
+  source_url: string | null;
+  raw_text: string | null;
+  weight: number;
+  detected_at: string | null;
 }
 
 export async function listProspects(
@@ -80,6 +53,29 @@ export async function listProspects(
 
 export async function getProspect(id: string): Promise<Prospect> {
   const { data } = await api.get<Prospect>(`/prospects/${id}`);
+  return data;
+}
+
+// --- Lead classification (Sprint 3B) ---
+
+export type Tier = "smb" | "mid" | "enterprise" | "unknown";
+
+export interface ClassifyResult {
+  tier: Tier;
+  tier_confidence: number;
+  tier_reasoning: string;
+  industry_specific: string;
+  industry_category: string;
+  industry_confidence: number;
+  industry_rationale: string;
+}
+
+export async function classifyProspect(
+  id: string,
+): Promise<ClassifyResult> {
+  const { data } = await api.post<ClassifyResult>(
+    `/prospects/${id}/classify`,
+  );
   return data;
 }
 

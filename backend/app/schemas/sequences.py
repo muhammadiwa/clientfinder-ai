@@ -7,7 +7,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-SequenceChannel = Literal["email", "whatsapp", "threads"]
+SequenceChannel = Literal["email", "whatsapp", "threads", "auto"]
+# 'auto' = let the channel_selector pick based on prospect contact +
+# industry bias (F&B/retail/klinik/salon → WhatsApp first; else email).
 
 
 class SequenceStepSchema(BaseModel):

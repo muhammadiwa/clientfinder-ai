@@ -225,3 +225,175 @@ export async function updateSequence(
 export async function deleteSequence(id: string): Promise<void> {
   await api.delete(`/sequences/${id}`);
 }
+
+// --- Analytics (Sprint 3A sub-task 3) ---
+
+export interface SequenceStepStats {
+  step_index: number;
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  failed: number;
+  response_rate: number;
+  open_rate: number;
+}
+
+export interface SequenceChannelStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  failed: number;
+  response_rate: number;
+  open_rate: number;
+}
+
+export interface SequenceAnalytics {
+  sequence_id: string;
+  sequence_name: string;
+  daily_send_cap: number;
+  totals: {
+    sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    replied: number;
+    bounced: number;
+    failed: number;
+  };
+  by_step: SequenceStepStats[];
+  by_channel: Record<string, SequenceChannelStats>;
+  today_sent: number;
+  computed_at: string;
+}
+
+export async function getSequenceAnalytics(
+  sequenceId: string,
+): Promise<SequenceAnalytics> {
+  const { data } = await api.get<SequenceAnalytics>(
+    `/sequences/${sequenceId}/analytics`,
+  );
+  return data;
+}
+
+export interface SequenceTimeSeriesPoint {
+  date: string;       // ISO date "YYYY-MM-DD"
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+}
+
+export interface SequenceTimeSeries {
+  sequence_id: string;
+  days: number;
+  by_day: SequenceTimeSeriesPoint[];
+}
+
+export async function getSequenceTimeSeries(
+  sequenceId: string,
+  days = 30,
+): Promise<SequenceTimeSeries> {
+  const { data } = await api.get<SequenceTimeSeries>(
+    `/sequences/${sequenceId}/analytics/timeseries?days=${days}`,
+  );
+  return data;
+}
+
+// --- Enrollments (Sprint 3A) ---
+
+export interface EnrollmentItem {
+  id: string;
+  prospect_id: string;
+  sequence_id: string;
+  current_step: number;
+  status: "active" | "paused" | "completed" | "stopped";
+  next_action_at: string | null;
+  started_at: string;
+  completed_at: string | null;
+  stopped_reason: string | null;
+}
+
+export interface EnrollmentListResponse {
+  items: EnrollmentItem[];
+  total: number;
+}
+
+export async function listEnrollments(
+  params: {
+    status_filter?: string;
+    sequence_id?: string;
+    prospect_id?: string;
+    limit?: number;
+  } = {},
+): Promise<EnrollmentListResponse> {
+  const { data } = await api.get<EnrollmentListResponse>(
+    "/sequences/enrollments",
+    { params },
+  );
+  return data;
+}
+
+export async function pauseEnrollment(
+  enrollmentId: string,
+): Promise<{ ok: boolean; status?: string; error?: string }> {
+  const { data } = await api.post<{ ok: boolean; status?: string; error?: string }>(
+    `/sequences/enrollments/${enrollmentId}/pause`,
+  );
+  return data;
+}
+
+export async function resumeEnrollment(
+  enrollmentId: string,
+): Promise<{ ok: boolean; status?: string; error?: string }> {
+  const { data } = await api.post<{ ok: boolean; status?: string; error?: string }>(
+    `/sequences/enrollments/${enrollmentId}/resume`,
+  );
+  return data;
+}
+
+export async function stopEnrollment(
+  enrollmentId: string,
+  reason: string = "manual_stop",
+): Promise<{ ok: boolean; status?: string; error?: string }> {
+  const { data } = await api.post<{ ok: boolean; status?: string; error?: string }>(
+    `/sequences/enrollments/${enrollmentId}/stop`,
+    null,
+    { params: { reason } },
+  );
+  return data;
+}
+
+export async function triggerDripRunner(): Promise<{
+  ok: boolean;
+  task_id: string;
+  status: string;
+}> {
+  const { data } = await api.post<{
+    ok: boolean;
+    task_id: string;
+    status: string;
+  }>("/sequences/drip-runner/run");
+  return data;
+}
+
+export async function enrollProspectInSequence(
+  prospectId: string,
+  sequenceId: string,
+): Promise<{ ok: boolean; enrollment_id: string; next_action_at: string }> {
+  const { data } = await api.post<{
+    ok: boolean;
+    enrollment_id: string;
+    next_action_at: string;
+  }>("/sequences/enroll", {
+    prospect_id: prospectId,
+    sequence_id: sequenceId,
+  });
+  return data;
+}

@@ -118,6 +118,18 @@ class Settings(BaseSettings):
     threads_cookies_path: str = "/app/.sessions/threads_cookies.json"
     threads_daily_dm_limit: int = 20
 
+    # T9.0 — Social Signal Agent scrapers (Twitter / Threads)
+    # Both scrapers use cookie-based auth per R7 pragmatic-legal.
+    # Cookies are NOT committed (gitignored) — the operator must
+    # upload them manually via the setup script.
+    twitter_cookies_path: str = "/app/.sessions/twitter_cookies.json"
+    twitter_search_max_per_query: int = 30
+    twitter_max_age_days: int = 14
+    # When True, falls back to "no signals this run" if cookies are
+    # missing or stale instead of raising. Default True = pipeline
+    # stays healthy when cookies aren't set up yet.
+    twitter_soft_fail: bool = True
+
     # Scraping
     scraper_user_agent_rotation: bool = True
     scraper_request_delay_min: int = 3
@@ -133,6 +145,28 @@ class Settings(BaseSettings):
     scout_google_enabled: bool = False
     scout_google_prefilter_enabled: bool = True
     scout_google_max_results_per_query: int = 50  # cap before prefilter
+
+    # Sprint 3C — Structured business sources (replacing noisy SearXNG)
+    # Google Places API: returns structured place data (name, address,
+    # phone, website, rating, opening hours). Far cleaner than SearXNG
+    # results for the UMKM use case.
+    google_places_api_key: str = ""
+    scout_google_places_enabled: bool = False
+    scout_google_places_max_per_query: int = 30
+
+    # Yelp Fusion API: businesses with reviews + ratings. Good for
+    # F&B, retail, klinik (industries Yelp covers well).
+    yelp_api_key: str = ""
+    scout_yelp_enabled: bool = False
+    scout_yelp_max_per_query: int = 30
+
+    # Sprint 3C sub-task 2 — Tokopedia seller search (Playwright)
+    # No public API; uses browser automation. Soft-fail by default —
+    # operator opts in by setting scout_tokopedia_enabled=true.
+    scout_tokopedia_enabled: bool = False
+    scout_tokopedia_max_per_query: int = 20
+    scout_tokopedia_headless: bool = True
+    scout_tokopedia_page_timeout_s: int = 20
 
     # Scout enrichment (T8.6) — homepage fetch for phone/email/address/socials
     scout_enrichment_enabled: bool = True

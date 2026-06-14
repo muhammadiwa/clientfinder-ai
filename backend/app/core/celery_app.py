@@ -15,6 +15,7 @@ celery_app = Celery(
         "app.tasks.analysis_tasks",
         "app.tasks.outreach_tasks",
         "app.tasks.scheduled_tasks",
+        "app.tasks.drip_runner",
     ],
 )
 
@@ -38,5 +39,19 @@ celery_app.conf.update(
         "app.tasks.scraping.*": {"queue": "scraping"},
         "app.tasks.analysis.*": {"queue": "analysis"},
         "app.tasks.outreach.*": {"queue": "outreach"},
+        "app.tasks.drip_runner.*": {"queue": "outreach"},
+    },
+    # Periodic beat schedule — T6.2 / Sprint 3A multi-channel outreach.
+    # The drip runner walks enrollments whose next_action_at <= now
+    # and creates Message rows for the next step.
+    beat_schedule={
+        "drip-runner-every-15-min": {
+            "task": "app.tasks.outreach.drip_runner",
+            "schedule": 15 * 60.0,  # every 15 minutes
+        },
+        "send-approved-messages-every-5-min": {
+            "task": "app.tasks.outreach.send_scheduled",
+            "schedule": 5 * 60.0,
+        },
     },
 )
