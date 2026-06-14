@@ -66,4 +66,9 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
 );
 Label.displayName = "Label";
 
+// --- FormField (T8.5++++: design system form primitive) ---
+
+export { FormField } from "./form-field";
+export type { FormFieldProps } from "./form-field";
+
 export { Input, Textarea, Label };
