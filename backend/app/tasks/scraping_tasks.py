@@ -12,7 +12,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import desc, select
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
@@ -108,7 +108,6 @@ async def _run_job(job_id_str: str) -> int:
                 try:
                     from app.models.prospect import Prospect
                     from app.tasks.analysis_tasks import enrich_prospect_task
-                    from sqlalchemy import select, desc
 
                     # Find the N most-recent prospects whose
                     # company names match the just-inserted ones
