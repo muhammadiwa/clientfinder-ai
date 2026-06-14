@@ -281,6 +281,31 @@ export async function getSequenceAnalytics(
   return data;
 }
 
+export interface SequenceTimeSeriesPoint {
+  date: string;       // ISO date "YYYY-MM-DD"
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+}
+
+export interface SequenceTimeSeries {
+  sequence_id: string;
+  days: number;
+  by_day: SequenceTimeSeriesPoint[];
+}
+
+export async function getSequenceTimeSeries(
+  sequenceId: string,
+  days = 30,
+): Promise<SequenceTimeSeries> {
+  const { data } = await api.get<SequenceTimeSeries>(
+    `/sequences/${sequenceId}/analytics/timeseries?days=${days}`,
+  );
+  return data;
+}
+
 // --- Enrollments (Sprint 3A) ---
 
 export interface EnrollmentItem {

@@ -421,6 +421,12 @@ const STRINGS = {
     step: "Step",
     loadingStats: "Memuat statistik…",
     statsError: "Gagal memuat statistik",
+    // Sprint 3A carryover — per-day time series chart
+    timeSeries: "Per hari (30 hari terakhir)",
+    loadingChart: "Memuat chart…",
+    chartError: "Gagal memuat chart",
+    sent: "Terkirim",
+    replied: "Dibalas",
   },
 
   // Outreach

@@ -279,6 +279,27 @@ async def get_sequence_analytics(
     return await compute_sequence_stats(db, sequence_id)
 
 
+@router.get("/{sequence_id}/analytics/timeseries")
+async def get_sequence_time_series_endpoint(
+    sequence_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+    days: int = 30,
+) -> dict:
+    """Per-day time series for the per-step chart.
+
+    Returns: {sequence_id, days, by_day: [{date, sent, delivered,
+    opened, clicked, replied}]}
+    """
+    from app.services.outreach.analytics import compute_sequence_time_series
+    by_day = await compute_sequence_time_series(db, sequence_id, days=days)
+    return {
+        "sequence_id": str(sequence_id),
+        "days": days,
+        "by_day": by_day,
+    }
+
+
 @router.get("/{sequence_id}", response_model=SequenceOut)
 async def get_sequence(
     sequence_id: UUID,
