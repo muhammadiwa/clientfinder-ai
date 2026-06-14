@@ -56,6 +56,29 @@ export async function getProspect(id: string): Promise<Prospect> {
   return data;
 }
 
+// --- Lead classification (Sprint 3B) ---
+
+export type Tier = "smb" | "mid" | "enterprise" | "unknown";
+
+export interface ClassifyResult {
+  tier: Tier;
+  tier_confidence: number;
+  tier_reasoning: string;
+  industry_specific: string;
+  industry_category: string;
+  industry_confidence: number;
+  industry_rationale: string;
+}
+
+export async function classifyProspect(
+  id: string,
+): Promise<ClassifyResult> {
+  const { data } = await api.post<ClassifyResult>(
+    `/prospects/${id}/classify`,
+  );
+  return data;
+}
+
 export async function getProspectDetail(
   id: string,
 ): Promise<ProspectDetailResponse> {

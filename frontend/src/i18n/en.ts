@@ -348,6 +348,18 @@ const STRINGS = {
     closingProbability: "Closing probability",
     closingPercent: "%",
     ownerUnknown: "Not yet known",
+    // Sprint 3B — tier classification
+    tier: {
+      smb: "SMB",
+      mid: "Mid",
+      enterprise: "Enterprise",
+      unknown: "?",
+      confidence: "Confidence",
+    },
+    // Sprint 3B — classify button
+    classify: "Classify",
+    classifyTitle: "Classify tier + specific industry (T9.0 / Sprint 3B)",
+    classifyFailed: "Classification failed",
     // Sprint 3A — multi-channel outreach enrollments
     enrollments: {
       section: "Sequence enrollments",
