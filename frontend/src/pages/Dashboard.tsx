@@ -27,15 +27,16 @@ import type { Prospect } from "@/types";
 
 // Per playbook §1: status colors
 // T8.5+++++++ (telemetry fix): 4-series PROSPECT pipeline
-// (baru/dinilai/dihubungi/menang) sourced from the
-// activity log. Replaces the previous incorrect mapping
-// to outreach events (created/sent/replied) from PR #74
-// (which confused pipeline activity with outreach activity).
+// (new/scored/contacted/won) sourced from the activity log.
+// Series KEYS use English (canonical) for chart component
+// compatibility + i18n-friendly labels. This is the same
+// 4-series shape from commit ab6e8d4, but now with REAL
+// data source (activity log, not outreach events).
 const ACTIVITY_SERIES = [
-  { key: "baru", label: "Baru", color: "#64748b" },
-  { key: "dinilai", label: "Dinilai", color: "#8b5cf6" },
-  { key: "dihubungi", label: "Dihubungi", color: "#f59e0b" },
-  { key: "menang", label: "Menang", color: "#10b981" },
+  { key: "new", label: t.dashboard.new, color: "#64748b" },
+  { key: "scored", label: t.dashboard.scored, color: "#8b5cf6" },
+  { key: "contacted", label: t.dashboard.contactedLabel, color: "#f59e0b" },
+  { key: "won", label: t.dashboard.wonLabel, color: "#10b981" },
 ];
 
 const GRADE_COLORS: Record<string, string> = {
@@ -48,12 +49,12 @@ const GRADE_COLORS: Record<string, string> = {
 /**
  * T8.5+++++++ (telemetry fix): consumes REAL 4-series
  * PROSPECT pipeline data from the activity log
- * (baru/dinilai/dihubungi/menang). The previous 3-series
- * (created/sent/replied) was OUTREACH events, not
- * pipeline events — that was a conceptual error. This
- * is the correct mapping for the 'Aktivitas pipeline'
- * Dashboard chart (which is for the PROSPECT pipeline,
- * not the outreach message pipeline).
+ * (baru/dinilai/dihubungi/menang) — this is the
+ * Indonesian-named backend fields. The chart series
+ * KEYS are English (new/scored/contacted/won) for
+ * compatibility with the original ACTIVITY_SERIES
+ * shape from ab6e8d4; the values are mapped 1:1 from
+ * the real backend data.
  */
 function buildActivityData(
   days: { date: string; baru: number; dinilai: number; dihubungi: number; menang: number }[],
@@ -63,10 +64,12 @@ function buildActivityData(
       day: "numeric",
       month: "short",
     }),
-    baru: d.baru,
-    dinilai: d.dinilai,
-    dihubungi: d.dihubungi,
-    menang: d.menang,
+    // 1:1 mapping from Indonesian backend field → English
+    // chart series key (ab6e8d4 compatibility)
+    new: d.baru,
+    scored: d.dinilai,
+    contacted: d.dihubungi,
+    won: d.menang,
   }));
 }
 
