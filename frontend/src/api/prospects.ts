@@ -101,6 +101,33 @@ export async function enrichProspect(
   return data;
 }
 
+/**
+ * T8.6: re-fetch the prospect's homepage and extract phone, email,
+ * address, and social links. Overwrites existing fields (homepage
+ * is canonical per the spec). Triggers a Playwright fetch in the
+ * backend — typically 3-10s per call.
+ */
+export interface RefreshContactResponse {
+  ok: boolean;
+  status: "ok" | "no_data" | "timeout" | "error";
+  ms: number;
+  fields: {
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+    socials: Record<string, string>;
+  };
+}
+
+export async function refreshContact(
+  id: string,
+): Promise<RefreshContactResponse> {
+  const { data } = await api.post<RefreshContactResponse>(
+    `/prospects/${id}/refresh-contact`,
+  );
+  return data;
+}
+
 export async function createProspect(
   payload: Partial<Prospect>,
 ): Promise<Prospect> {

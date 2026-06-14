@@ -33,6 +33,7 @@ import { ScoreBreakdownChart } from "@/components/charts/ScoreBreakdown";
 import {
   enrichProspect,
   getProspectDetail,
+  refreshContact,
   type ProspectDetailResponse,
 } from "@/api/prospects";
 import { generateHooks } from "@/services/ai/ai-analyzer";
@@ -63,6 +64,7 @@ export function ProspectDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingHooks, setGeneratingHooks] = useState(false);
+  const [refreshingContact, setRefreshingContact] = useState(false);
   const [copiedHookId, setCopiedHookId] = useState<string | null>(null);
 
   const fetchDetail = async () => {
@@ -132,6 +134,43 @@ export function ProspectDetailPage() {
       setTimeout(() => setCopiedHookId(null), 2000);
     } catch {
       toast.error(t.prospectDetail.copyFailed);
+    }
+  };
+
+  // T8.6: re-fetch the prospect's homepage and extract phone, email,
+  // address, and social links. Best-effort: errors are surfaced via
+  // toast, the detail re-fetch shows the updated fields on success.
+  const handleRefreshContact = async () => {
+    if (!id) return;
+    if (refreshingContact) return;
+    setRefreshingContact(true);
+    try {
+      const result = await refreshContact(id);
+      if (result.status === "ok") {
+        const found: string[] = [];
+        if (result.fields.phone) found.push("phone");
+        if (result.fields.email) found.push("email");
+        if (result.fields.address) found.push("address");
+        if (Object.keys(result.fields.socials).length > 0) found.push("socials");
+        toast.success(
+          found.length > 0
+            ? `Kontak diperbarui: ${found.join(", ")}`
+            : "Halaman berhasil dimuat, tapi tidak ada info kontak yang ditemukan",
+        );
+      } else if (result.status === "no_data") {
+        toast("Halaman dimuat, tapi tidak ada info kontak publik", { icon: "ℹ️" });
+      } else if (result.status === "timeout") {
+        toast.error("Timeout saat memuat halaman");
+      } else {
+        toast.error("Gagal memperbarui kontak");
+      }
+      // Re-fetch detail so the UI shows the updated fields
+      await fetchDetail();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal memperbarui kontak";
+      toast.error(msg);
+    } finally {
+      setRefreshingContact(false);
     }
   };
 
@@ -244,6 +283,26 @@ export function ProspectDetailPage() {
                     {prospect.email}
                   </a>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefreshContact}
+                  disabled={refreshingContact || !prospect.website}
+                  className="h-7 px-2 text-xs"
+                  title={
+                    prospect.website
+                      ? "Fetch homepage untuk update phone/email/address/socials"
+                      : "Tidak ada website untuk di-fetch"
+                  }
+                >
+                  <RefreshCw
+                    className={cn(
+                      "h-3 w-3",
+                      refreshingContact && "animate-spin",
+                    )}
+                  />
+                  {refreshingContact ? "Memperbarui…" : "Refresh kontak"}
+                </Button>
               </div>
               {prospect.description && (
                 <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl mt-2">

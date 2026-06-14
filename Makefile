@@ -7,7 +7,9 @@
 
 .PHONY: help up down restart logs ps build rebuild pull \
         backend-shell frontend-shell postgres-shell redis-shell minio-shell \
-        migrate makemigration seed createsuperuser test lint format clean \
+        migrate makemigration seed createsuperuser \
+        backfill-enrichment backfill-enrichment-dry-run \
+        test lint format clean \
         backup restore health
 
 # ---------- Colors ----------
@@ -80,6 +82,13 @@ seed: ## Seed initial data
 
 createsuperuser: ## Create admin user
 	docker compose exec backend python -m scripts.create_admin
+
+# ---------- Scout enrichment (T8.6) ----------
+backfill-enrichment: ## Backfill phone/email/address/socials for existing prospects
+	docker compose exec backend python -m scripts.backfill_enrichment
+
+backfill-enrichment-dry-run: ## Preview backfill without HTTP fetches
+	docker compose exec backend python -m scripts.backfill_enrichment --dry-run
 
 # ---------- Quality ----------
 test: ## Run all tests
