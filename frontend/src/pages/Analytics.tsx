@@ -756,16 +756,16 @@ function FunnelBars({
 function DailyVolumeChart({
   data,
 }: {
-  // T8.5+++++++ (telemetry fix): now uses the new
-  // 4-series PROSPECT pipeline shape (baru/dinilai/
-  // dihubungi/menang). Charts the `baru` series
-  // (new prospects added per day) — the same data the
-  // Dashboard's "Aktivitas pipeline" chart shows, but
-  // as a simpler bar chart (no multi-series area).
+  // T8.5+++++++ (telemetry fix): consumes the
+  // DailyPipeline shape from /analytics/overview.
+  // We render the 'baru' (new prospects) series as
+  // a simple bar chart. Uses i18n key for the label
+  // (t.dashboard.new) to stay consistent with the
+  // Dashboard's pipeline chart (ab6e8d4 + PR #76).
   data: { date: string; baru: number }[];
 }) {
   if (data.length === 0) {
-    return <EmptyMini label="No activity in this period" />;
+    return <EmptyMini label={t.analytics.noActivityPeriod} />;
   }
   const max = Math.max(...data.map((d) => d.baru), 1);
   return (
@@ -777,7 +777,7 @@ function DailyVolumeChart({
             <div
               key={d.date}
               className="flex-1 group relative"
-              title={`${d.date}: ${d.baru} prospek baru`}
+              title={`${d.date}: ${d.baru} ${t.dashboard.new.toLowerCase()}`}
             >
               <div
                 className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-violet-200 to-violet-400 dark:from-violet-900 dark:to-violet-600 rounded-t"
@@ -795,7 +795,7 @@ function DailyVolumeChart({
       <div className="flex items-center gap-3 mt-2 text-xs">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-sm bg-violet-400" />
-          <span className="text-muted-foreground">Prospek baru</span>
+          <span className="text-muted-foreground">{t.dashboard.new}</span>
         </span>
       </div>
     </div>
