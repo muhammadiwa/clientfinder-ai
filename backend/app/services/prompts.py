@@ -236,3 +236,68 @@ def build_outreach_email_prompt(
         pains_block=_format_pains(pains),
     )
     return OUTREACH_SYSTEM, user
+
+
+# --- Social Signal Classification (T9.0 / Sprint 2 sub-task 2.4) ---
+
+SOCIAL_SIGNAL_CLASSIFICATION_SYSTEM = (
+    "Anda adalah social signal detector untuk sales prospecting. "
+    "Tugas Anda: dari daftar post Twitter/Threads publik, identifikasi "
+    "post yang menunjukkan orang atau bisnis MEMBUTUHKAN SOFTWARE "
+    "(developer, automation, AI, web, mobile, ERP/CRM, dsb). "
+    "Output HARUS JSON valid dengan schema yang diberikan."
+)
+
+SOCIAL_SIGNAL_KINDS = [
+    "hiring_developer",       # Posting lowongan / cari developer / butuh web baru
+    "need_software",           # Cari software / aplikasi / tools baru
+    "need_automation",         # Mengeluh proses manual / cari automation
+    "need_ai",                 # Butuh AI / integrasi AI
+    "need_website",            # Website lama / tidak ada / perlu redesign
+    "complaint_manual",        # Mengeluh proses repetitif / manual
+    "launching_product",       # Sedang launching produk / fitur baru
+    "expansion",               # Buka cabang / ekspansi
+    "funding",                 # Sedang cari investor / funding
+    "digital_transformation",  # Digital transformation announcement
+    "other",                   # Sinyal lain yang relevan
+]
+
+
+def build_social_signal_classification_prompt(
+    posts: list[dict],
+) -> tuple[str, str]:
+    """Build the (system, user) prompt pair for LLM signal classification.
+
+    `posts` is a list of {text, author_handle, url, timestamp, language}
+    dicts (typically SocialPost.to_dict() output).
+    """
+    import json as _json
+    kinds_list = _json.dumps(SOCIAL_SIGNAL_KINDS, ensure_ascii=False)
+    posts_block = _json.dumps(
+        [{"i": i, **p} for i, p in enumerate(posts)],
+        ensure_ascii=False,
+        indent=2,
+    )
+    user = f"""\
+# TUGAS
+
+Dari daftar {len(posts)} post publik di bawah, identifikasi post yang
+menunjukkan SINYAL KEBUTUHAN SOFTWARE. Untuk setiap sinyal, output
+JSON dengan field:
+
+- i: index post (0-based)
+- kind: salah satu dari {kinds_list}
+- severity: 0-100 (confidence + strength of the signal)
+- evidence_text: kutipan langsung dari post (1-2 kalimat)
+- rationale: kenapa ini sinyal yang relevan
+
+Hanya output post yang BENAR-BENAR menunjukkan kebutuhan software.
+Lewati post yang tidak relevan (chit-chat, promosi, opini, dll).
+
+# POSTS
+
+{posts_block}
+
+# OUTPUT (JSON array, no other text)
+"""
+    return SOCIAL_SIGNAL_CLASSIFICATION_SYSTEM, user
