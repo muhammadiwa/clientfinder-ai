@@ -174,6 +174,10 @@ const STRINGS = {
     leadQuality: "Lead quality",
     leadQualityDesc: "Distribution by grade",
     total: "total",
+    // Sprint 3B carryover — tier distribution widget
+    tier: "tier",
+    tierDistribution: "Tier distribution",
+    tierDistributionDesc: "SMB / Mid / Enterprise / Unknown",
     pipelineActivation: "Pipeline activation",
     pipelineActivationDesc: "% of prospects past the 'New' stage",
     winRate: "Win rate",

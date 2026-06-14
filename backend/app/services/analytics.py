@@ -510,3 +510,58 @@ async def _compute_daily_volume(
             )
         )
     return out
+
+
+# --- Sprint 3B carryover: tier distribution for the dashboard ---
+
+# Canonical tier display order (for stable UI rendering)
+TIER_DISPLAY_ORDER = ["smb", "mid", "enterprise", "unknown"]
+
+# Colors matched to the TierBadge component in the frontend
+TIER_COLORS = {
+    "smb": "#10b981",        # emerald-500
+    "mid": "#f59e0b",        # amber-500
+    "enterprise": "#8b5cf6", # violet-500
+    "unknown": "#71717a",    # zinc-500
+}
+
+
+async def get_tier_distribution(
+    days: int = 30,
+) -> dict[str, int]:
+    """Tier distribution for the dashboard.
+
+    Per the Sprint 3B tier-classification design, this returns
+    the count of prospects per tier (smb/mid/enterprise/unknown)
+    in the lookback period. The 'unclassified' bucket covers
+    prospects with tier IS NULL (pre-Sprint 3B or not yet
+    auto-classified).
+
+    Used by the Dashboard's TierDonut widget.
+    """
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=days)
+    async with AsyncSessionLocal() as db:
+        # Count per tier, including NULL as 'unclassified'
+        rows = (
+            await db.execute(
+                select(
+                    Prospect.tier,
+                    func.count(Prospect.id),
+                ).where(
+                    Prospect.discovered_at >= start,
+                    Prospect.deleted_at.is_(None),
+                ).group_by(Prospect.tier)
+            )
+        ).all()
+        # Initialize the canonical 5 buckets (smb/mid/enterprise/unknown/unclassified)
+        dist: dict[str, int] = {tier: 0 for tier in TIER_DISPLAY_ORDER}
+        dist["unclassified"] = 0
+        for tier, count in rows:
+            if tier in dist:
+                dist[tier] = count
+            else:
+                # NULL tier → unclassified bucket
+                dist["unclassified"] = count
+        dist["total"] = sum(dist.values())
+    return dist

@@ -176,6 +176,10 @@ const STRINGS = {
     leadQuality: "Kualitas prospek",
     leadQualityDesc: "Distribusi per grade",
     total: "total",
+    // Sprint 3B carryover — tier distribution widget
+    tier: "tier",
+    tierDistribution: "Distribusi tier",
+    tierDistributionDesc: "SMB / Mid / Enterprise / Unknown",
     pipelineActivation: "Aktivasi pipeline",
     pipelineActivationDesc: "% prospek yang sudah melewati tahap 'Baru'",
     winRate: "Tingkat kemenangan",
