@@ -315,6 +315,31 @@ const STRINGS = {
       noAudit: "Belum ada audit teknologi",
       noAuditDesc: "Jalankan analis untuk sidik jari situs web",
     },
+    // T9.0 / Sprint 2 — Social Signal Agent signals
+    signals: {
+      section: "Sinyal sosial",
+      empty: "Belum ada sinyal terdeteksi",
+      emptyDesc: "Jalankan analisis ulang untuk memicu pemindaian Twitter/Threads",
+      kinds: {
+        hiring_developer: "Mencari developer",
+        need_software: "Butuh software",
+        need_automation: "Butuh automation",
+        need_ai: "Butuh integrasi AI",
+        need_website: "Butuh website",
+        complaint_manual: "Mengeluh proses manual",
+        launching_product: "Meluncurkan produk",
+        expansion: "Ekspansi usaha",
+        funding: "Sedang cari funding",
+        digital_transformation: "Transformasi digital",
+        other: "Sinyal lain",
+      },
+      sources: {
+        twitter: "X (Twitter)",
+        threads: "Threads",
+        social: "Sosial",
+      },
+      severityLabel: "Tingkat keyakinan",
+    },
     // Sprint 1 (T5 v3) / brief: 4 extra business-context fields
     ownerName: "Pemilik",
     ownerNamePlaceholder: "cth: Budi Santoso",

@@ -30,6 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
 import { ScoreBreakdownChart } from "@/components/charts/ScoreBreakdown";
+import { SignalList } from "@/components/SignalList";
 import {
   enrichProspect,
   getProspectDetail,
@@ -200,7 +201,7 @@ export function ProspectDetailPage() {
     );
   }
 
-  const { prospect, tech_stack, pain_points, lead_score, hooks } = detail;
+  const { prospect, tech_stack, pain_points, lead_score, hooks, signals } = detail;
   const hasScore = lead_score != null;
 
   return (
@@ -680,6 +681,13 @@ export function ProspectDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* T9.0: Social signals (Twitter + Threads) */}
+        <SignalList
+          signals={signals || []}
+          onReanalyze={handleReanalyze}
+          reanalyzing={analyzing}
+        />
       </div>
 
       {/* AI-generated hooks */}
