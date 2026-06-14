@@ -361,14 +361,19 @@ export function OutreachPage() {
   const handleRejectConfirm = async () => {
     if (!rejectDialog) return;
     setRejectLoading(true);
+    // T8.5+++++++ (mirror): optimistic UI for single reject.
+    // Removes the message from the pending tab INSTANTLY
+    // (the user sees the row disappear the moment they
+    // click 'Confirm' in the reject dialog with reason),
+    // reverts on error.
+    const id = rejectDialog.messageId;
+    const reason = rejectDialog.reason || undefined;
     try {
-      await approveMessage(rejectDialog.messageId, {
-        approve: false,
-        reason: rejectDialog.reason || undefined,
+      await applyOptimistic([id], async () => {
+        await approveMessage(id, { approve: false, reason });
       });
       toast.success(t.outreach.rejectedToast);
       setRejectDialog(null);
-      reload();
     } catch {
       toast.error(t.outreach.rejectFailed);
     } finally {
