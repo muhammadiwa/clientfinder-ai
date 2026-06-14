@@ -20,7 +20,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ActivityChart } from "@/components/charts/ActivityChart";
 import { GradeDonut } from "@/components/charts/GradeDonut";
 import { useProspects } from "@/hooks/useProspects";
-import { useOutreachStats } from "@/hooks/useOutreach";
 import { useAnalyticsOverview } from "@/hooks/useAnalytics";
 import { useT, getT } from "@/i18n";
 import type { Prospect } from "@/types";
@@ -84,11 +83,6 @@ function genSparkline(seed: number, trend: "up" | "down" | "stable"): number[] {
 export function DashboardPage() {
   const t = useT();
   const { data, isLoading } = useProspects({ per_page: 100 });
-  // T8.5+++++++ (Dashboard stats wiring): real stats from
-  // the /outreach/stats endpoint. Powers the "Menunggu
-  // tinjauan" KPI card + the Sidebar badge (both
-  // auto-update via the cache).
-  const statsQuery = useOutreachStats();
   // T8.5+++++++ (Dashboard stats wiring): real daily
   // volume from /analytics/overview. Powers the
   // "Aktivitas pipeline" chart (replaces synthetic).
@@ -224,14 +218,6 @@ export function DashboardPage() {
               icon={<Send className="h-4 w-4" />}
               sparkline={genSparkline(3, "stable")}
               sparklineColor="text-blue-500"
-            />
-            <StatCard
-              title="Menunggu tinjauan"
-              value={statsQuery.data?.pending_approval ?? 0}
-              description={t.outreach.pendingReview}
-              icon={<Send className="h-4 w-4" />}
-              sparkline={genSparkline(4, "up")}
-              sparklineColor="text-amber-500"
             />
             <StatCard
               title={t.dashboard.won}
