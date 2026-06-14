@@ -8,14 +8,15 @@ import {
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n/id";
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/scout", label: "Scout", icon: Sparkles },
-  { to: "/prospects", label: "Prospects", icon: Users },
-  { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-  { to: "/outreach", label: "Outreach", icon: Send },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard },
+  { to: "/scout", label: t.nav.scout, icon: Sparkles },
+  { to: "/prospects", label: t.nav.prospects, icon: Users },
+  { to: "/pipeline", label: t.nav.pipeline, icon: KanbanSquare },
+  { to: "/outreach", label: t.nav.outreach, icon: Send },
+  { to: "/analytics", label: t.nav.analytics, icon: BarChart3 },
   // Settings moved to Topbar avatar dropdown (PR #23 audit fix)
   // — single source of truth, less sidebar clutter
 ];

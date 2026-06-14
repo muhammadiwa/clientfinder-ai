@@ -4,6 +4,7 @@ import { Loader2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label, Textarea } from "@/components/ui/input";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/utils";
 
 export interface ConfirmDialogProps {
@@ -50,6 +51,8 @@ export function ConfirmDialog({
   loading = false,
   onConfirm,
 }: ConfirmDialogProps) {
+  // Focus trap — cycles Tab within dialog, restores focus on close
+  const dialogRef = useFocusTrap<HTMLDivElement>(open);
   // Esc to close
   useEffect(() => {
     if (!open) return;
@@ -75,15 +78,22 @@ export function ConfirmDialog({
       />
       {/* Dialog */}
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal
+        aria-labelledby="confirm-dialog-title"
         className={cn(
           "relative bg-card border border-border rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4",
-          "animate-fade-in",
+          "animate-fade-in focus:outline-none",
         )}
       >
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold leading-tight">{title}</h2>
+          <h2
+            id="confirm-dialog-title"
+            className="text-lg font-semibold leading-tight"
+          >
+            {title}
+          </h2>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
