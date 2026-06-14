@@ -146,6 +146,20 @@ class Settings(BaseSettings):
     scout_google_prefilter_enabled: bool = True
     scout_google_max_results_per_query: int = 50  # cap before prefilter
 
+    # Sprint 3C — Structured business sources (replacing noisy SearXNG)
+    # Google Places API: returns structured place data (name, address,
+    # phone, website, rating, opening hours). Far cleaner than SearXNG
+    # results for the UMKM use case.
+    google_places_api_key: str = ""
+    scout_google_places_enabled: bool = False
+    scout_google_places_max_per_query: int = 30
+
+    # Yelp Fusion API: businesses with reviews + ratings. Good for
+    # F&B, retail, klinik (industries Yelp covers well).
+    yelp_api_key: str = ""
+    scout_yelp_enabled: bool = False
+    scout_yelp_max_per_query: int = 30
+
     # Scout enrichment (T8.6) — homepage fetch for phone/email/address/socials
     scout_enrichment_enabled: bool = True
     scout_enrichment_page_timeout_s: int = 12
