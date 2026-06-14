@@ -9,11 +9,11 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { t } from "@/i18n/id";
+import { useT, getT } from "@/i18n/id";
 
 const navItems = [
-  { to: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard },
-  { to: "/prospects", label: t.nav.prospects, icon: Users },
+  { to: "/dashboard", label: getT().nav.dashboard, icon: LayoutDashboard },
+  { to: "/prospects", label: getT().nav.prospects, icon: Users },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
@@ -25,6 +25,7 @@ const navItems = [
  * - Same nav items + active state as Sidebar (dark)
  */
 export function MobileNav() {
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   return (

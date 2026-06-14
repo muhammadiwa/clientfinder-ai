@@ -45,7 +45,7 @@ import {
 } from "@/api/outreach";
 import { useProspects } from "@/hooks/useProspects";
 import { getProspectDetail } from "@/api/prospects";
-import { t } from "@/i18n/id";
+import { useT } from "@/i18n/id";
 import { formatApiError } from "@/lib/formatError";
 import { cn } from "@/lib/utils";
 import type { Message, MessageChannel, OutreachStats, Prospect, Template } from "@/types";
@@ -152,6 +152,7 @@ function formatTimeShort(iso: string | null): string {
 // --- Main page ---
 
 export function OutreachPage() {
+  const t = useT();
   // Tab + list state
   const [tab, setTab] = useState<Tab>("pending_approval");
   const [filterChannel, setFilterChannel] = useState<FilterChannel>("all");
@@ -1408,6 +1409,7 @@ function MessageRow({
   onSubmit,
   onDelete,
 }: MessageRowProps) {
+  const t = useT();
   const ch = CHANNEL_STYLE[m.channel] ?? CHANNEL_STYLE.email;
   const statusBadge = STATUS_BADGE[m.status] ?? STATUS_BADGE.draft;
 
@@ -1700,6 +1702,7 @@ function DeliveryProgress({ status }: { status: string }) {
 }
 
 function TabEmptyState({ tab, search }: { tab: Tab; search: string }) {
+  const t = useT();
   if (search) {
     return (
       <EmptyState

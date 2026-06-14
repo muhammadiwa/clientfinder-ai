@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth";
 import { useMe } from "@/hooks/useAuth";
-import { t } from "@/i18n/id";
+import { useT } from "@/i18n/id";
 
 /**
  * Settings / Team section
  * Single-user for now (T8 will add multi-user).
  */
 export function TeamSection() {
+  const t = useT();
   const user = useAuthStore((s) => s.user);
   const me = useMe(true);
 

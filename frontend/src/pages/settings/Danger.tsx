@@ -7,7 +7,7 @@ import {
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { t } from "@/i18n/id";
+import { useT } from "@/i18n/id";
 
 /**
  * Settings / Danger zone section
@@ -15,6 +15,7 @@ import { t } from "@/i18n/id";
  * Per audit finding #4: visually communicates "not actionable yet".
  */
 export function DangerSection() {
+  const t = useT();
   return (
     <div className="space-y-6">
       <div>

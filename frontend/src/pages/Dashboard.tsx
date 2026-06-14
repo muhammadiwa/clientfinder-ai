@@ -22,7 +22,7 @@ import { GradeDonut } from "@/components/charts/GradeDonut";
 import { useProspects } from "@/hooks/useProspects";
 import { useOutreachStats } from "@/hooks/useOutreach";
 import { useAnalyticsOverview } from "@/hooks/useAnalytics";
-import { t } from "@/i18n/id";
+import { useT, getT } from "@/i18n/id";
 import type { Prospect } from "@/types";
 
 // Per playbook §1: status colors
@@ -33,10 +33,10 @@ import type { Prospect } from "@/types";
 // 4-series shape from commit ab6e8d4, but now with REAL
 // data source (activity log, not outreach events).
 const ACTIVITY_SERIES = [
-  { key: "new", label: t.dashboard.new, color: "#64748b" },
-  { key: "scored", label: t.dashboard.scored, color: "#8b5cf6" },
-  { key: "contacted", label: t.dashboard.contactedLabel, color: "#f59e0b" },
-  { key: "won", label: t.dashboard.wonLabel, color: "#10b981" },
+  { key: "new", label: getT().dashboard.new, color: "#64748b" },
+  { key: "scored", label: getT().dashboard.scored, color: "#8b5cf6" },
+  { key: "contacted", label: getT().dashboard.contactedLabel, color: "#f59e0b" },
+  { key: "won", label: getT().dashboard.wonLabel, color: "#10b981" },
 ];
 
 const GRADE_COLORS: Record<string, string> = {
@@ -82,6 +82,7 @@ function genSparkline(seed: number, trend: "up" | "down" | "stable"): number[] {
 }
 
 export function DashboardPage() {
+  const t = useT();
   const { data, isLoading } = useProspects({ per_page: 100 });
   // T8.5+++++++ (Dashboard stats wiring): real stats from
   // the /outreach/stats endpoint. Powers the "Menunggu

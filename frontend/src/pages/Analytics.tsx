@@ -21,12 +21,12 @@ import {
 } from "@/api/analytics";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { t } from "@/i18n/id";
+import { useT, getT } from "@/i18n/id";
 
 const RANGE_OPTIONS = [
-  { value: 7, label: t.analytics.period7d },
-  { value: 30, label: t.analytics.period30d },
-  { value: 90, label: t.analytics.period90d },
+  { value: 7, label: getT().analytics.period7d },
+  { value: 30, label: getT().analytics.period30d },
+  { value: 90, label: getT().analytics.period90d },
 ];
 
 const GRADE_COLORS: Record<string, string> = {
@@ -51,6 +51,7 @@ const CHANNEL_COLORS: Record<string, string> = {
 // sections flow naturally down the page, every metric has a delta hint
 // or sparkline where useful.
 export function AnalyticsPage() {
+  const t = useT();
   const [days, setDays] = useState(30);
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -764,6 +765,7 @@ function DailyVolumeChart({
   // Dashboard's pipeline chart (ab6e8d4 + PR #76).
   data: { date: string; baru: number }[];
 }) {
+  const t = useT();
   if (data.length === 0) {
     return <EmptyMini label={t.analytics.noActivityPeriod} />;
   }

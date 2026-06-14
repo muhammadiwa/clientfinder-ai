@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label, Textarea } from "@/components/ui/input";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/utils";
-import { t } from "@/i18n/id";
+import { useT, getT } from "@/i18n/id";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -46,12 +46,13 @@ export function ConfirmDialog({
   title,
   description,
   input,
-  confirmText = t.confirmDialog.defaultConfirmText,
-  cancelText = t.confirmDialog.defaultCancelText,
+  confirmText = getT().confirmDialog.defaultConfirmText,
+  cancelText = getT().confirmDialog.defaultCancelText,
   destructive = false,
   loading = false,
   onConfirm,
 }: ConfirmDialogProps) {
+  const t = useT();
   // Focus trap — cycles Tab within dialog, restores focus on close
   const dialogRef = useFocusTrap<HTMLDivElement>(open);
   // Esc to close

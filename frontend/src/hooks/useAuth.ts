@@ -5,7 +5,7 @@ import * as authApi from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { formatApiError } from "@/lib/formatError";
-import { t } from "@/i18n/id";
+import { getT } from "@/i18n/id";
 import type { LoginPayload } from "@/api/auth";
 import type { User } from "@/types";
 
@@ -15,7 +15,7 @@ export function useLogin() {
 
   return useApiMutation({
     mutationFn: (payload: LoginPayload) => authApi.login(payload),
-    successMessage: t.auth.welcomeBack,
+    successMessage: getT().auth.welcomeBack,
     onSuccess: (data) => {
       const user: User = {
         id: data.user_id,
@@ -48,7 +48,7 @@ export function useLogout() {
   return useMutation({
     mutationFn: authApi.logout,
     onSuccess: () => {
-      toast.success(t.auth.signedOut);
+      toast.success(getT().auth.signedOut);
     },
     onError: (error) => {
       // Logout failure is non-fatal — show a warning but

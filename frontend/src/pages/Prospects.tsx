@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useProspects } from "@/hooks/useProspects";
-import { t } from "@/i18n/id";
+import { useT, getT } from "@/i18n/id";
 import type { ProspectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -24,18 +24,19 @@ function getInitials(name: string): string {
 }
 
 const STATUS_FILTERS: { label: string; value: ProspectStatus | "all" }[] = [
-  { label: t.prospects.allStatus, value: "all" },
-  { label: t.prospects.newStatus, value: "new" },
-  { label: t.prospects.scoredStatus, value: "scored" },
-  { label: t.prospects.contactedStatus, value: "contacted" },
-  { label: t.prospects.repliedStatus, value: "replied" },
-  { label: t.prospects.wonStatus, value: "won" },
-  { label: t.prospects.lostStatus, value: "lost" },
+  { label: getT().prospects.allStatus, value: "all" },
+  { label: getT().prospects.newStatus, value: "new" },
+  { label: getT().prospects.scoredStatus, value: "scored" },
+  { label: getT().prospects.contactedStatus, value: "contacted" },
+  { label: getT().prospects.repliedStatus, value: "replied" },
+  { label: getT().prospects.wonStatus, value: "won" },
+  { label: getT().prospects.lostStatus, value: "lost" },
 ];
 
 const PAGE_SIZE = 20;
 
 export function ProspectsPage() {
+  const t = useT();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
