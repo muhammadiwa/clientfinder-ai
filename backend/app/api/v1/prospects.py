@@ -283,6 +283,117 @@ async def enrich_prospect_endpoint(
     return summary
 
 
+# === Sprint 3B — Lead classification endpoint ===
+
+@router.post("/{prospect_id}/classify")
+async def classify_lead_endpoint(
+    prospect_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+) -> dict[str, Any]:
+    """Sprint 3B: classify a prospect's tier + refine industry.
+
+    Tier is computed heuristically from revenue + employee count
+    + signal/pain density (no LLM cost, instant). The industry
+    refinement uses a single LLM call (cheap, ~300 tokens out).
+
+    Returns:
+        {
+            "tier": "smb" | "mid" | "enterprise" | "unknown",
+            "tier_confidence": 0.0-1.0,
+            "tier_reasoning": str,
+            "industry_specific": str,
+            "industry_category": str,
+            "industry_confidence": 0-100,
+            "industry_rationale": str,
+        }
+
+    Per the brief, the orchestrator can also call this
+    automatically when it detects an ambiguous industry.
+    """
+    from sqlalchemy import select
+    from app.models.prospect import Prospect, TechStack
+    from app.models.lead import Signal, PainPoint
+    from app.services.analyzer.lead_classifier import (
+        classify_tier,
+        classify_industry_deep,
+    )
+
+    prospect = (
+        await db.execute(select(Prospect).where(Prospect.id == prospect_id))
+    ).scalar_one_or_none()
+    if not prospect:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Prospect {prospect_id} not found",
+        )
+
+    # Count signals + pains for tier confidence
+    n_signals = (
+        await db.execute(
+            select(Signal).where(Signal.prospect_id == prospect.id)
+        )
+    ).scalars().all()
+    n_pains = (
+        await db.execute(
+            select(PainPoint).where(PainPoint.prospect_id == prospect.id)
+        )
+    ).scalars().all()
+
+    # Tier (heuristic, instant)
+    tier_result = classify_tier(
+        employee_count=prospect.employee_count,
+        revenue_estimate=prospect.revenue_estimate,
+        n_signals=len(n_signals),
+        n_pains=len(n_pains),
+    )
+
+    # Industry deep (LLM, single call)
+    tech = (
+        await db.execute(
+            select(TechStack).where(TechStack.prospect_id == prospect.id)
+        )
+    ).scalar_one_or_none()
+    website_snippet = ""
+    if tech:
+        # Use the tech's audit metadata if available, else the page title
+        website_snippet = (
+            (tech.extra_metadata or {}).get("page_title", "")
+            or (tech.extra_metadata or {}).get("description", "")
+        )
+    ind_result = await classify_industry_deep(
+        company_name=prospect.company_name or "",
+        current_industry=prospect.industry,
+        location=prospect.location_city,
+        website_snippet=website_snippet,
+        description=prospect.description,
+        owner_name=prospect.owner_name,
+    )
+
+    # Persist the new fields (don't require migration — use existing
+    # description as the specific subcategory, leave the schema alone
+    # for now). Storing in the activity log + updating description
+    # gives the operator visibility without a migration.
+    if ind_result.get("industry_specific") and ind_result["industry_specific"] != "unknown":
+        # Only update if the LLM was confident enough
+        if ind_result.get("confidence", 0) >= 50:
+            prospect.description = (
+                f"[{ind_result['industry_specific']}] "
+                + (prospect.description or "")
+            )
+            await db.commit()
+
+    return {
+        "tier": tier_result["tier"],
+        "tier_confidence": tier_result["confidence"],
+        "tier_reasoning": tier_result["reasoning"],
+        "industry_specific": ind_result["industry_specific"],
+        "industry_category": ind_result["industry_category"],
+        "industry_confidence": ind_result["confidence"],
+        "industry_rationale": ind_result["rationale"],
+    }
+
+
 # === T8.6 Homepage Enrichment endpoint ===
 
 @router.post("/{prospect_id}/refresh-contact")

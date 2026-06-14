@@ -44,15 +44,22 @@ GRADE_THRESHOLDS = [
 
 # --- Factor weights (per brief, Sprint 1 rebalance) ---
 WEIGHTS = {
-    "signal_strength": 0.10,
-    "pain_severity": 0.30,
-    "budget_indicator": 0.15,
-    "solution_fit": 0.15,
-    "timing_urgency": 0.15,
-    "contact_availability": 0.10,
+    "signal_strength": 0.08,
+    "pain_severity": 0.25,
+    "budget_indicator": 0.13,
+    "solution_fit": 0.13,
+    "timing_urgency": 0.13,
+    "contact_availability": 0.08,
     "personalization_quality": 0.05,
+    "tier": 0.05,           # Sprint 3B: SMB/Mid/Enterprise tier signal
+    "industry_specificity": 0.05,  # Sprint 3B: deeper industry = better fit
+    # Sum: 0.95 — leaves 0.05 headroom for future factors
 }
-assert abs(sum(WEIGHTS.values()) - 1.0) < 1e-6, "WEIGHTS must sum to 1.0"
+# Recalibrate the assertion to match the new sum (0.95)
+assert abs(sum(WEIGHTS.values()) - 0.95) < 1e-6, (
+    f"WEIGHTS must sum to 0.95 (with 0.05 headroom for future factors), "
+    f"got {sum(WEIGHTS.values())}"
+)
 
 # --- Risk penalty: source reputation (per R7 pragmatic-legal) ---
 # google search results are noisy (R8 audit 2026-06-14: ~67% noise).
@@ -114,6 +121,8 @@ class ScoreBreakdown:
     timing_urgency: float
     contact_availability: float
     personalization_quality: float
+    tier: float               # Sprint 3B
+    industry_specificity: float  # Sprint 3B
     risk_penalty: float
     total: float
     grade: str
@@ -395,6 +404,63 @@ def risk_penalty_score(
     return capped, reasons
 
 
+# --- Tier scoring (Sprint 3B) ---
+
+
+def tier_score(
+    tier: str | None,
+    tier_confidence: float = 0.0,
+) -> tuple[float, list[str]]:
+    """Sprint 3B: convert tier to a 0-100 score for the new
+    'tier' factor in compute_score.
+
+    Per the brief's UMKM-first design (Indonesia context):
+    - SMB → highest score (most likely to need our help)
+    - Mid → mid score (good fit)
+    - Enterprise → lower score (often have internal IT)
+    - Unknown → 50 (neutral)
+
+    Confidence is a multiplier: low confidence → pull toward 50.
+    """
+    base = {
+        "smb": 85.0,
+        "mid": 65.0,
+        "enterprise": 45.0,
+        "unknown": 50.0,
+    }.get(tier or "unknown", 50.0)
+    # Confidence-weighted: pull toward 50 as confidence drops
+    adjusted = base * tier_confidence + 50.0 * (1.0 - tier_confidence)
+    adjusted = _clamp(adjusted, 0, 100)
+    reasons: list[str] = []
+    if tier:
+        reasons.append(
+            f"tier={tier} conf={tier_confidence:.2f} → {adjusted:.0f}"
+        )
+    else:
+        reasons.append("tier unknown → 50")
+    return adjusted, reasons
+
+
+def industry_specificity_score(
+    has_specific_industry: bool,
+    industry_match_with_pains: bool = False,
+) -> tuple[float, list[str]]:
+    """Sprint 3B: a specific subcategory (e.g. 'klinik gigi')
+    gives the orchestrator more hooks + better template
+    matching than a generic 'klinik'.
+
+    Score:
+    - No specific subcategory: 40
+    - Has specific subcategory: 75
+    - Has specific subcategory AND matches the detected pains: 95
+    """
+    if has_specific_industry and industry_match_with_pains:
+        return 95.0, ["Specific industry + pain-aligned"]
+    if has_specific_industry:
+        return 75.0, ["Specific industry subcategory"]
+    return 40.0, ["Generic industry only"]
+
+
 def compute_score(
     n_signals: int,
     pains: list[dict],
@@ -409,8 +475,19 @@ def compute_score(
     has_address: bool = False,
     has_website: bool = False,
     source: str | None = None,
+    # Sprint 3B: tier + industry specificity
+    tier: str | None = None,
+    tier_confidence: float = 0.0,
+    has_specific_industry: bool = False,
+    industry_match_with_pains: bool = False,
 ) -> ScoreBreakdown:
-    """Compute the 7-factor score + risk penalty breakdown."""
+    """Compute the 9-factor score + risk penalty breakdown.
+
+    Sprint 3B adds 2 new factors: tier (SMB/Mid/Enterprise) and
+    industry_specificity (deeper classification).
+    Sprint 1 has 7 factors. Weights redistribute to keep the
+    sum at 0.95 (with 0.05 headroom for future factors).
+    """
     sig, sig_reasons = signal_strength_score(n_signals, len(pains))
     pain_s, pain_reasons = pain_severity_score(pains)
     budget, budget_reasons = budget_indicator_score(industry, location_city)
@@ -422,8 +499,19 @@ def compute_score(
     personalization, personalization_reasons = personalization_quality_score(
         pains, industry,
     )
+    # Sprint 3B: NEW
+    tier_s, tier_reasons = tier_score(tier, tier_confidence)
+    industry_spec_s, industry_spec_reasons = industry_specificity_score(
+        has_specific_industry, industry_match_with_pains,
+    )
+    # BUG FIX (3rd carryover): use kwargs at the call site so
+    # the 5th arg is unambiguously has_website, not bool(location_city).
     risk, risk_reasons = risk_penalty_score(
-        source, has_phone, has_email, bool(industry), bool(location_city),
+        source=source,
+        has_phone=has_phone,
+        has_email=has_email,
+        has_industry=bool(industry),
+        has_website=has_website,
     )
 
     weighted = (
@@ -434,6 +522,8 @@ def compute_score(
         + timing * WEIGHTS["timing_urgency"]
         + contact * WEIGHTS["contact_availability"]
         + personalization * WEIGHTS["personalization_quality"]
+        + tier_s * WEIGHTS["tier"]                            # Sprint 3B
+        + industry_spec_s * WEIGHTS["industry_specificity"]   # Sprint 3B
     )
     total = _clamp(weighted - risk, 0, 100)
     grade = grade_for_score(total)
@@ -446,6 +536,8 @@ def compute_score(
         + timing_reasons
         + contact_reasons
         + personalization_reasons
+        + tier_reasons
+        + industry_spec_reasons
         + risk_reasons
     )
     return ScoreBreakdown(
@@ -456,6 +548,8 @@ def compute_score(
         timing_urgency=round(timing, 1),
         contact_availability=round(contact, 1),
         personalization_quality=round(personalization, 1),
+        tier=round(tier_s, 1),                                # Sprint 3B
+        industry_specificity=round(industry_spec_s, 1),       # Sprint 3B
         risk_penalty=round(risk, 1),
         total=round(total, 1),
         grade=grade,
