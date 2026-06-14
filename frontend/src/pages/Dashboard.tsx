@@ -20,14 +20,15 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ActivityChart } from "@/components/charts/ActivityChart";
 import { GradeDonut } from "@/components/charts/GradeDonut";
 import { useProspects } from "@/hooks/useProspects";
+import { t } from "@/i18n/id";
 import type { Prospect } from "@/types";
 
 // Per playbook §1: status colors
 const ACTIVITY_SERIES = [
-  { key: "new", label: "New", color: "#64748b" },
-  { key: "scored", label: "Scored", color: "#8b5cf6" },
-  { key: "contacted", label: "Contacted", color: "#f59e0b" },
-  { key: "won", label: "Won", color: "#10b981" },
+  { key: "new", label: t.dashboard.new, color: "#64748b" },
+  { key: "scored", label: t.dashboard.scored, color: "#8b5cf6" },
+  { key: "contacted", label: t.dashboard.contactedLabel, color: "#f59e0b" },
+  { key: "won", label: t.dashboard.wonLabel, color: "#10b981" },
 ];
 
 const GRADE_COLORS: Record<string, string> = {
@@ -155,19 +156,19 @@ export function DashboardPage() {
               })}
             </span>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">Welcome back</h1>
+          <h1 className="text-4xl font-bold tracking-tight">{t.dashboard.title}</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            Here's what's happening with your lead generation pipeline today.
+            {t.dashboard.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
-            <Link to="/pipeline">View pipeline</Link>
+            <Link to="/pipeline">{t.dashboard.viewPipeline}</Link>
           </Button>
           <Button asChild>
             <Link to="/prospects">
               <Sparkles className="h-4 w-4" />
-              New search
+              {t.dashboard.newSearch}
             </Link>
           </Button>
         </div>
@@ -185,33 +186,33 @@ export function DashboardPage() {
         ) : (
           <>
             <StatCard
-              title="Total Prospects"
+              title={t.dashboard.totalProspects}
               value={stats.total}
-              description="All time"
+              description={t.dashboard.allTime}
               icon={<Users className="h-4 w-4" />}
               sparkline={genSparkline(1, "up")}
               sparklineColor="text-violet-500"
             />
             <StatCard
-              title="Hot Leads"
+              title={t.dashboard.hotLeads}
               value={stats.hot}
-              description="Score 80+"
+              description={t.dashboard.hotLeadsDesc}
               icon={<Star className="h-4 w-4" />}
               sparkline={genSparkline(2, "up")}
               sparklineColor="text-amber-500"
             />
             <StatCard
-              title="Contacted"
+              title={t.dashboard.contacted}
               value={stats.contacted}
-              description="Outreach sent"
+              description={t.dashboard.contactedDesc}
               icon={<Send className="h-4 w-4" />}
               sparkline={genSparkline(3, "stable")}
               sparklineColor="text-blue-500"
             />
             <StatCard
-              title="Won"
+              title={t.dashboard.won}
               value={stats.won}
-              description={`${wonRate}% conversion`}
+              description={t.dashboard.wonDesc.replace("{pct}", String(wonRate))}
               icon={<CheckCircle2 className="h-4 w-4" />}
               sparkline={genSparkline(4, "up")}
               sparklineColor="text-emerald-500"
@@ -227,14 +228,14 @@ export function DashboardPage() {
             <div>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Activity className="h-4 w-4 text-muted-foreground" />
-                Pipeline activity
+                {t.dashboard.pipelineActivity}
               </CardTitle>
               <CardDescription>
-                Daily activity across stages over the last 14 days
+                {t.dashboard.pipelineActivityDesc}
               </CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/pipeline">View pipeline</Link>
+              <Link to="/pipeline">{t.dashboard.viewPipeline}</Link>
             </Button>
           </div>
         </CardHeader>
@@ -245,18 +246,18 @@ export function DashboardPage() {
             <EmptyState
               className="py-12"
               icon={<Activity className="h-5 w-5" />}
-              title="Could not load activity"
-              description="Check your connection or sign in again"
+              title={t.dashboard.couldNotLoad}
+              description={t.dashboard.couldNotLoadDesc}
             />
           ) : !hasAnyData ? (
             <EmptyState
               className="py-12"
               icon={<Sparkles className="h-5 w-5" />}
-              title="No activity yet"
-              description="Run a scout job in T4 to start seeing pipeline activity here"
+              title={t.dashboard.noActivity}
+              description={t.dashboard.noActivityDesc}
               action={
                 <Button size="sm" className="mt-2">
-                  Run first scout
+                  {t.dashboard.runFirstScout}
                 </Button>
               }
             />
@@ -274,35 +275,35 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Lead quality</CardTitle>
-            <CardDescription>Distribution by grade</CardDescription>
+            <CardTitle className="text-lg">{t.dashboard.leadQuality}</CardTitle>
+            <CardDescription>{t.dashboard.leadQualityDesc}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-48 w-full" />
             ) : (
-              <GradeDonut data={gradeData} centerSubLabel="total" />
+              <GradeDonut data={gradeData} centerSubLabel={t.dashboard.total} />
             )}
           </CardContent>
         </Card>
 
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <ConversionCard
-            title="Pipeline activation"
+            title={t.dashboard.pipelineActivation}
             value={activatedRate}
-            description="% of prospects past the 'New' stage"
+            description={t.dashboard.pipelineActivationDesc}
             icon={<TrendingUp className="h-4 w-4" />}
             positive={activatedRate >= 50}
           />
           <ConversionCard
-            title="Win rate"
+            title={t.dashboard.winRate}
             value={wonRate}
-            description="% of total prospects that closed"
+            description={t.dashboard.winRateDesc}
             icon={<CheckCircle2 className="h-4 w-4" />}
             positive={wonRate >= 10}
           />
           <ConversionCard
-            title="Drop-off"
+            title={t.dashboard.dropOff}
             value={
               stats.total > 0
                 ? Math.round(
@@ -314,7 +315,7 @@ export function DashboardPage() {
                   )
                 : 0
             }
-            description="% of prospects marked as Lost"
+            description={t.dashboard.dropOffDesc}
             icon={<TrendingDown className="h-4 w-4" />}
             positive={false}
             inverse
@@ -327,13 +328,13 @@ export function DashboardPage() {
         <CardHeader>
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle className="text-lg">Top prospects</CardTitle>
+              <CardTitle className="text-lg">{t.dashboard.topProspects}</CardTitle>
               <CardDescription>
-                Highest-scoring leads, ready for outreach
+                {t.dashboard.topProspectsDesc}
               </CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/prospects">View all →</Link>
+              <Link to="/prospects">{t.common.viewAll} →</Link>
             </Button>
           </div>
         </CardHeader>
@@ -348,11 +349,11 @@ export function DashboardPage() {
             <EmptyState
               className="py-12"
               icon={<Users className="h-5 w-5" />}
-              title="No prospects yet"
-              description="Run a scout job to discover businesses that match your ICP"
+              title={t.dashboard.noProspects}
+              description={t.dashboard.noProspectsDesc}
               action={
                 <Button size="sm" className="mt-2">
-                  Start prospecting
+                  {t.dashboard.startProspecting}
                 </Button>
               }
             />
@@ -361,11 +362,11 @@ export function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left font-medium text-muted-foreground px-6 py-2.5">Company</th>
-                    <th className="text-left font-medium text-muted-foreground px-3 py-2.5">Industry</th>
-                    <th className="text-left font-medium text-muted-foreground px-3 py-2.5">Status</th>
-                    <th className="text-right font-medium text-muted-foreground px-3 py-2.5">Score</th>
-                    <th className="text-right font-medium text-muted-foreground px-6 py-2.5">Grade</th>
+                    <th className="text-left font-medium text-muted-foreground px-6 py-2.5">{t.dashboard.company}</th>
+                    <th className="text-left font-medium text-muted-foreground px-3 py-2.5">{t.dashboard.industry}</th>
+                    <th className="text-left font-medium text-muted-foreground px-3 py-2.5">{t.dashboard.status}</th>
+                    <th className="text-right font-medium text-muted-foreground px-3 py-2.5">{t.dashboard.score}</th>
+                    <th className="text-right font-medium text-muted-foreground px-6 py-2.5">{t.dashboard.grade}</th>
                   </tr>
                 </thead>
                 <tbody>

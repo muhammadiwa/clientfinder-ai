@@ -37,6 +37,7 @@ import {
 } from "@/api/prospects";
 import { generateHooks } from "@/services/ai/ai-analyzer";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n/id";
 
 /**
  * ProspectDetail — full analyst view (T5 Group 3).
@@ -146,8 +147,8 @@ export function ProspectDetailPage() {
         </Button>
         <EmptyState
           icon={<AlertTriangle className="h-5 w-5" />}
-          title="Could not load prospect"
-          description={error ?? "Not found"}
+          title={t.prospectDetail.couldNotLoad}
+          description={error ?? t.prospectDetail.notFound}
           action={
             <Button onClick={fetchDetail}>
               <RefreshCw className="h-4 w-4" />
@@ -345,8 +346,8 @@ export function ProspectDetailPage() {
           <CardContent className="p-6">
             <EmptyState
               icon={<Sparkles className="h-5 w-5" />}
-              title="Not yet analyzed"
-              description="Run the analyst pipeline to compute the 5-factor score breakdown"
+              title={t.prospectDetail.notYetAnalyzed}
+              description={t.prospectDetail.notYetAnalyzedDesc}
               action={
                 <Button onClick={handleReanalyze} disabled={analyzing}>
                   {analyzing ? (
@@ -446,8 +447,8 @@ export function ProspectDetailPage() {
             ) : (
               <EmptyState
                 icon={<Zap className="h-5 w-5" />}
-                title="No tech audit yet"
-                description="Run analyst to fingerprint the website"
+                title={t.prospectDetail.tech.noAudit}
+                description={t.prospectDetail.tech.noAuditDesc}
                 action={
                   <Button
                     variant="outline"

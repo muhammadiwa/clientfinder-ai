@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useProspects } from "@/hooks/useProspects";
+import { t } from "@/i18n/id";
 import type { ProspectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -23,13 +24,13 @@ function getInitials(name: string): string {
 }
 
 const STATUS_FILTERS: { label: string; value: ProspectStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "New", value: "new" },
-  { label: "Scored", value: "scored" },
-  { label: "Contacted", value: "contacted" },
-  { label: "Replied", value: "replied" },
-  { label: "Won", value: "won" },
-  { label: "Lost", value: "lost" },
+  { label: t.prospects.allStatus, value: "all" },
+  { label: t.prospects.newStatus, value: "new" },
+  { label: t.prospects.scoredStatus, value: "scored" },
+  { label: t.prospects.contactedStatus, value: "contacted" },
+  { label: t.prospects.repliedStatus, value: "replied" },
+  { label: t.prospects.wonStatus, value: "won" },
+  { label: t.prospects.lostStatus, value: "lost" },
 ];
 
 const PAGE_SIZE = 20;
@@ -182,15 +183,15 @@ export function ProspectsPage() {
                       icon={<Filter className="h-5 w-5" />}
                       title={
                         search
-                          ? `No results for "${search}"`
+                          ? `Tidak ada hasil untuk "${search}"`
                           : statusFilter !== "all"
-                            ? `No ${statusFilter} prospects`
-                            : "No prospects found"
+                            ? `Tidak ada prospek ${statusFilter}`
+                            : t.prospects.noMatch
                       }
                       description={
                         search
-                          ? "Try a different search term or clear the filter."
-                          : "Run a scout job to discover businesses that need software services."
+                          ? t.prospects.noProspectsHint
+                          : t.prospects.emptyHint
                       }
                       action={
                         <Button className="mt-4" size="sm" asChild>
