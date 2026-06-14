@@ -25,6 +25,7 @@ import { toast } from "react-hot-toast";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { FormField, Input, Textarea } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
@@ -191,6 +192,10 @@ export function OutreachPage() {
   const [composerTemplateId, setComposerTemplateId] = useState("");
   const [composerSubject, setComposerSubject] = useState("");
   const [composerBody, setComposerBody] = useState("");
+  const [composerErrors, setComposerErrors] = useState<{
+    subject?: string;
+    body?: string;
+  }>({});
   const [composerLoading, setComposerLoading] = useState(false);
   const [composerGenerated, setComposerGenerated] = useState(false);
 
@@ -515,6 +520,21 @@ export function OutreachPage() {
   const handleCreateDraft = async () => {
     if (!composerGenerated || !composerProspectId || !composerHookId) {
       toast.error(t.outreach.generateFirst);
+      return;
+    }
+    // T8.5++++++ composer inline validation
+    setComposerErrors({});
+    const errs: typeof composerErrors = {};
+    if (composerChannel === "email" && !composerSubject.trim()) {
+      errs.subject = t.outreach.subjectRequired;
+    }
+    if (!composerBody.trim()) {
+      errs.body = t.outreach.bodyRequired;
+    } else if (composerBody.trim().length < 20) {
+      errs.body = t.outreach.bodyTooShort;
+    }
+    if (Object.keys(errs).length > 0) {
+      setComposerErrors(errs);
       return;
     }
     setComposerLoading(true);
@@ -973,28 +993,32 @@ export function OutreachPage() {
                     </span>
                   </div>
                   {composerChannel === "email" && (
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">
-                        Subject
-                      </label>
-                      <input
+                    <FormField
+                      label="Subjek"
+                      required
+                      hint="Wajib diisi sebelum menyimpan"
+                      error={composerErrors.subject}
+                    >
+                      <Input
                         value={composerSubject}
                         onChange={(e) => setComposerSubject(e.target.value)}
-                        className="w-full h-8 px-2 text-sm rounded border border-input bg-background"
+                        className="h-8 text-sm"
                       />
-                    </div>
+                    </FormField>
                   )}
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Body
-                    </label>
-                    <textarea
+                  <FormField
+                    label="Body"
+                    required
+                    hint="Wajib diisi sebelum menyimpan"
+                    error={composerErrors.body}
+                  >
+                    <Textarea
                       value={composerBody}
                       onChange={(e) => setComposerBody(e.target.value)}
                       rows={8}
-                      className="w-full px-3 py-2 text-sm rounded border border-input bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="resize-none"
                     />
-                  </div>
+                  </FormField>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"

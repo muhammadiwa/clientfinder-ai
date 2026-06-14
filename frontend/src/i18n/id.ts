@@ -306,6 +306,9 @@ const STRINGS = {
     deleteFailed: "Gagal menghapus (pesan terkirim tidak bisa dihapus)",
     generateFailed: "Pembuatan gagal",
     createFailed: "Pembuatan gagal",
+    subjectRequired: "Subjek wajib diisi",
+    bodyRequired: "Body wajib diisi",
+    bodyTooShort: "Body terlalu pendek (min 20 karakter)",
     // Search
     searchPlaceholder: "Cari subject, body, atau company…",
     searchProspectPlaceholder: "Cari prospek…",
