@@ -7,6 +7,12 @@ DuckDuckGo + Bing + Brave + others, so we get diversity without
 hitting Google directly.
 
 Per playbook R7: pragmatic-legal, no API key, no ToS violation.
+
+Sprint 1 / Phase 1.1: kill switch (settings.scout_google_enabled)
++ pre-filter (5 cheap string rules in app.services.scraper.prefilter)
+applied to every result. The 2026-06-14 audit showed ~67% noise
+for Indonesian UMKM queries; the pre-filter is the cheapest
+way to cut that without disabling Google entirely.
 """
 from __future__ import annotations
 
@@ -17,7 +23,9 @@ from urllib.parse import urlparse
 
 import httpx
 
+from app.core.config import settings
 from app.services.scraper.base import BaseScraper, ScrapedResult, ScraperError
+from app.services.scraper.prefilter import prefilter_google_results
 
 logger = logging.getLogger("clientfinder.scraper.google")
 
@@ -34,6 +42,18 @@ class GoogleSearchScraper(BaseScraper):
         self.base_url = base_url.rstrip("/")
 
     async def search(self, query: dict[str, Any]) -> list[ScrapedResult]:
+        # Kill switch (Sprint 1 / Phase 1.1): operator can disable
+        # Google Search entirely. When OFF we return immediately
+        # without an HTTP request — saves a network call + SearXNG
+        # load and prevents the noisy 67% from ever entering the
+        # prospect pipeline.
+        if not settings.scout_google_enabled:
+            logger.info(
+                "Google Search disabled via scout_google_enabled=False; "
+                "returning 0 results (no SearXNG request made)"
+            )
+            return []
+
         keywords = query.get("keywords") or query.get("q") or ""
         if isinstance(keywords, list):
             keywords = " ".join(keywords)
@@ -42,7 +62,10 @@ class GoogleSearchScraper(BaseScraper):
             raise ScraperError("Google: 'keywords' is required")
 
         location = (query.get("location") or "").strip()
-        max_results = int(query.get("max_results") or 20)
+        max_results = int(
+            query.get("max_results")
+            or settings.scout_google_max_results_per_query
+        )
         full_query = f"{keywords} {location}".strip() if location else keywords
 
         params = {
@@ -67,6 +90,30 @@ class GoogleSearchScraper(BaseScraper):
 
         results = data.get("results") or []
         logger.info("SearXNG returned %d raw results", len(results))
+
+        # Sprint 1 / Phase 1.1: pre-filter (5 cheap string rules) before
+        # parsing into ScrapedResult. Drops noise at the gate.
+        prefilter_enabled = settings.scout_google_prefilter_enabled
+        rejected_counts: dict[str, int] = {}
+        if prefilter_enabled:
+            filtered = prefilter_google_results(results)
+            kept_results: list[dict] = []
+            for r, drop_reason in filtered:
+                if drop_reason is None:
+                    kept_results.append(r)
+                else:
+                    rejected_counts[drop_reason] = (
+                        rejected_counts.get(drop_reason, 0) + 1
+                    )
+            logger.info(
+                "Pre-filter: %d kept / %d dropped (%s)",
+                len(kept_results),
+                sum(rejected_counts.values()),
+                ", ".join(
+                    f"{k}={v}" for k, v in sorted(rejected_counts.items())
+                ) or "no drops",
+            )
+            results = kept_results
 
         scraped: list[ScrapedResult] = []
         for r in results:
