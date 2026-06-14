@@ -493,4 +493,10 @@ const STRINGS = {
 } as const;
 
 export type Strings = typeof STRINGS;
-export const t = STRINGS;
+export default STRINGS;
+
+// Re-export from the locale-aware index so all existing
+// `import { t } from "@/i18n/id"` call sites keep working
+// (T8.5++++++: language toggle)
+export { t, useT, useLocaleStore } from "./index";
+export type { Locale } from "./index";
