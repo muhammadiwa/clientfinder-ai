@@ -387,6 +387,15 @@ const STRINGS = {
     defaultDesc: "3 messages: first_touch (day 0) → follow_up (day 3) → breakup (day 7)",
     activate: "Activate",
     deactivate: "Deactivate",
+    // Sprint 3A sub-task 3 — analytics widget
+    todayCap: "Today cap",
+    totalSent: "Sent",
+    totalReplied: "Replied",
+    totalOpened: "Opened",
+    perStep: "Per step",
+    step: "Step",
+    loadingStats: "Loading stats…",
+    statsError: "Failed to load stats",
   },
 
   // Outreach

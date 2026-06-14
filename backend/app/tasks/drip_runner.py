@@ -115,6 +115,29 @@ async def _process_one_enrollment(
         enrollment.stopped_reason = "sequence_inactive_or_missing"
         return {"ok": False, "reason": "seq_inactive"}
 
+    # Daily send cap check (Sprint 3A sub-task 3).
+    # If today's sent count for this sequence >= cap, bump the
+    # enrollment's next_action_at to tomorrow midnight UTC and
+    # skip. The runner will see the same enrollment as due again
+    # on its next tick, so the bump is required.
+    from app.services.outreach.analytics import (
+        count_sent_today_for_sequence,
+    )
+    sent_today = await count_sent_today_for_sequence(db, seq.id)
+    if sent_today >= seq.daily_send_cap:
+        tomorrow = (
+            datetime.now(timezone.utc)
+            .replace(hour=0, minute=0, second=0, microsecond=0)
+            + timedelta(days=1)
+        )
+        enrollment.next_action_at = tomorrow
+        return {
+            "ok": False,
+            "reason": "daily_cap_reached",
+            "sent_today": sent_today,
+            "cap": seq.daily_send_cap,
+        }
+
     steps = seq.steps or []
     if enrollment.current_step >= len(steps):
         enrollment.status = "completed"

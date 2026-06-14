@@ -9,7 +9,9 @@ import {
   updateSequence,
   deleteSequence,
   triggerDripRunner,
+  getSequenceAnalytics,
   type Sequence,
+  type SequenceAnalytics,
 } from "@/api/outreach";
 import { getT } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -271,8 +273,138 @@ function SequenceRow({
               </li>
             ))}
           </ol>
+          {/* Per-step analytics (Sprint 3A sub-task 3) */}
+          <SequenceStats sequenceId={sequence.id} />
         </div>
       )}
     </li>
+  );
+}
+
+/**
+ * Per-sequence analytics widget — shown when a sequence is
+ * expanded. Shows totals, today's sent count vs the cap, and
+ * per-step sent/replied counts.
+ */
+function SequenceStats({ sequenceId }: { sequenceId: string }) {
+  const t = getT().sequences;
+  const [stats, setStats] = useState<SequenceAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    getSequenceAnalytics(sequenceId)
+      .then((d) => { if (!cancelled) setStats(d); })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(String((e as Error)?.message || e));
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [sequenceId]);
+
+  if (loading) {
+    return (
+      <div
+        data-testid="sequence-stats-loading"
+        className="mt-3 p-2 text-xs text-muted-foreground"
+      >
+        {t.loadingStats}
+      </div>
+    );
+  }
+  if (error || !stats) {
+    return (
+      <div
+        data-testid="sequence-stats-error"
+        className="mt-3 p-2 text-xs text-red-500"
+      >
+        {error || t.statsError}
+      </div>
+    );
+  }
+
+  const capPct = stats.daily_send_cap > 0
+    ? Math.round((stats.today_sent / stats.daily_send_cap) * 100)
+    : 0;
+  const capColor =
+    capPct >= 90 ? "text-red-500" :
+    capPct >= 60 ? "text-amber-500" : "text-emerald-500";
+
+  return (
+    <div
+      data-testid="sequence-stats"
+      className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs"
+    >
+      {/* Cap usage */}
+      <div
+        data-testid="cap-usage"
+        className="p-2 rounded border bg-card"
+      >
+        <p className="text-muted-foreground">{t.todayCap}</p>
+        <p className={cn("font-semibold text-sm", capColor)}>
+          {stats.today_sent} / {stats.daily_send_cap}
+        </p>
+        {capPct >= 60 && (
+          <p className="text-[10px] mt-0.5 text-muted-foreground">
+            {capPct}%
+          </p>
+        )}
+      </div>
+      {/* Totals */}
+      <div
+        data-testid="totals-sent"
+        className="p-2 rounded border bg-card"
+      >
+        <p className="text-muted-foreground">{t.totalSent}</p>
+        <p className="font-semibold text-sm">{stats.totals.sent}</p>
+      </div>
+      <div
+        data-testid="totals-replied"
+        className="p-2 rounded border bg-card"
+      >
+        <p className="text-muted-foreground">{t.totalReplied}</p>
+        <p className="font-semibold text-sm">
+          {stats.totals.replied}
+          {stats.totals.sent > 0 && (
+            <span className="text-[10px] ml-1 text-muted-foreground">
+              ({Math.round(stats.totals.replied / stats.totals.sent * 100)}%)
+            </span>
+          )}
+        </p>
+      </div>
+      <div
+        data-testid="totals-opened"
+        className="p-2 rounded border bg-card"
+      >
+        <p className="text-muted-foreground">{t.totalOpened}</p>
+        <p className="font-semibold text-sm">{stats.totals.opened}</p>
+      </div>
+      {/* Per-step breakdown */}
+      <div className="col-span-2 md:col-span-4 mt-1">
+        <p className="text-muted-foreground mb-1">{t.perStep}</p>
+        <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5">
+          {stats.by_step.map((s) => (
+            <div
+              key={s.step_index}
+              data-testid={`step-stats-${s.step_index}`}
+              className="p-1.5 rounded border bg-card text-center"
+            >
+              <p className="text-[10px] text-muted-foreground">
+                {t.step} {s.step_index + 1}
+              </p>
+              <p className="font-semibold">{s.sent}</p>
+              {s.replied > 0 && (
+                <p className="text-[10px] text-emerald-600">
+                  ↩ {s.replied}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
