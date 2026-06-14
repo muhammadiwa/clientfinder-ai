@@ -344,6 +344,76 @@ export function ProspectDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Business context (Sprint 1 / T5 v3 / brief: 4 extra fields) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            {t.prospectDetail.ownerName} &amp; bisnis
+          </CardTitle>
+          <CardDescription>
+            Konteks bisnis singkat (brief: nama owner, jumlah karyawan,
+            estimasi revenue, peluang closing)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                {t.prospectDetail.ownerName}
+              </div>
+              <div className="text-sm font-medium">
+                {prospect.owner_name || (
+                  <span className="text-muted-foreground italic">
+                    {t.prospectDetail.ownerUnknown}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                {t.prospectDetail.employeeCount}
+              </div>
+              <div className="text-sm font-medium num">
+                {prospect.employee_count != null
+                  ? `${prospect.employee_count} ${t.prospectDetail.employeesUnit}`
+                  : (
+                      <span className="text-muted-foreground italic">
+                        {t.prospectDetail.ownerUnknown}
+                      </span>
+                    )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                {t.prospectDetail.revenueEstimate}
+              </div>
+              <div className="text-sm font-medium">
+                {prospect.revenue_estimate || (
+                  <span className="text-muted-foreground italic">
+                    {t.prospectDetail.ownerUnknown}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                {t.prospectDetail.closingProbability}
+              </div>
+              <div className="text-sm font-medium num">
+                {prospect.closing_probability != null
+                  ? `${prospect.closing_probability}${t.prospectDetail.closingPercent}`
+                  : (
+                      <span className="text-muted-foreground italic">
+                        {t.prospectDetail.ownerUnknown}
+                      </span>
+                    )}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Score breakdown */}
       {hasScore ? (
         <Card>
@@ -353,7 +423,7 @@ export function ProspectDetailPage() {
               Score breakdown
             </CardTitle>
             <CardDescription>
-              5-factor weighted scoring (0-100) — high pain + fit = best leads
+              7-factor weighted scoring + risk penalty (Sprint 1 / T5 v3)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -388,6 +458,25 @@ export function ProspectDetailPage() {
                   label: t.prospectDetail.factors.timingUrgency,
                   value: lead_score!.timing_urgency,
                   description: t.prospectDetail.factors.timingUrgencyDesc,
+                },
+                {
+                  key: "contact_availability",
+                  label: "Contact availability",
+                  value: lead_score!.contact_availability ?? 0,
+                  description: "Phone/email/social/website/address reachability",
+                },
+                {
+                  key: "personalization_quality",
+                  label: "Personalization quality",
+                  value: lead_score!.personalization_quality ?? 0,
+                  description: "Pain specificity + industry match (outreach hook quality)",
+                },
+                {
+                  key: "risk_penalty",
+                  label: "Risk penalty",
+                  value: -(lead_score!.risk_penalty ?? 0),
+                  description: "Source reputation + data quality deductions",
+                  inverted: true,
                 },
               ]}
               total={lead_score!.total_score}

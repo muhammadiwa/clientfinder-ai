@@ -1,24 +1,31 @@
 """
-Lead scoring — 5-factor deterministic formula (T5, A29, A10 v2).
+Lead scoring — 7-factor formula + risk penalty (Sprint 1 / T5 v3).
 
-5 factors per the existing `lead_scores` table schema:
-  - signal_strength: how many external signals (signals table) we have
-  - pain_severity: average pain severity × # pains
-  - budget_indicator: industry + location proxy for budget
-  - solution_fit: how well our services match the industry
-  - timing_urgency: how recent the prospect is (freshness decay)
+Aligns with the project brief's 7-component formula. The previous
+5-factor version was a v1 placeholder; this version adds the 3
+components that were missing:
 
-Total = weighted sum, clamped to [0, 100].
-Grade: A (80+), B (60-79), C (40-59), D (0-39).
+  + contact_availability    0.10  phone/email/social/address present
+  + personalization_quality  0.05  pain specificity + industry match
+  - risk_penalty           0.20  bad data + risky source
 
-Weights tuned for Indonesian UMKM lead-gen:
-  pain_severity 0.30 (most important — high pain = buy intent)
-  signal_strength 0.20
-  budget_indicator 0.15
-  solution_fit 0.20
-  timing_urgency 0.15
+  Original 5 (rebalanced to match brief):
+  ~ signal_strength        0.10  external signals + pains (brief: online_activity)
+  ~ pain_severity          0.30  avg severity (brief: need_signal)
+  ~ budget_indicator       0.15  industry + location (brief: budget_potential)
+  ~ solution_fit           0.15  service match (brief: business_fit)
+  ~ timing_urgency         0.15  freshness (brief: urgency)
 
-Total weights = 1.00.
+Total positive weights = 1.00. Formula:
+
+    total = clamp(sum(weight * factor) - risk_penalty, 0, 100)
+
+Grade thresholds (aligned with brief's 5-tier classification, using
+the simpler A/B/C/D mapping — A=Hot, B=Warm, C=Cold, D=Ignore):
+  80+ A (Hot Lead, 24h SLA)
+  60+ B (Warm Lead, nurture)
+  40+ C (Cold Lead, revisit)
+  <40 D (Ignore)
 """
 from __future__ import annotations
 
@@ -35,14 +42,32 @@ GRADE_THRESHOLDS = [
     (0.0, "D"),
 ]
 
-# --- Factor weights ---
+# --- Factor weights (per brief, Sprint 1 rebalance) ---
 WEIGHTS = {
-    "signal_strength": 0.20,
+    "signal_strength": 0.10,
     "pain_severity": 0.30,
     "budget_indicator": 0.15,
-    "solution_fit": 0.20,
+    "solution_fit": 0.15,
     "timing_urgency": 0.15,
+    "contact_availability": 0.10,
+    "personalization_quality": 0.05,
 }
+assert abs(sum(WEIGHTS.values()) - 1.0) < 1e-6, "WEIGHTS must sum to 1.0"
+
+# --- Risk penalty: source reputation (per R7 pragmatic-legal) ---
+# google search results are noisy (R8 audit 2026-06-14: ~67% noise).
+# Manual imports are assumed vetted. Maps = cleanest.
+SOURCE_RISK_PENALTY = {
+    "google": 10.0,         # noisy SearXNG aggregates
+    "google_maps": 0.0,     # clean Playwright scrape
+    "maps": 0.0,
+    "manual": 2.0,
+    "twitter": 5.0,         # TODO: real Twitter scraper (T9.0)
+    "threads": 5.0,        # TODO: real Threads scraper (T9.0)
+}
+
+# Max risk penalty (per brief: -20)
+RISK_PENALTY_MAX = 20.0
 
 # Industries with high digital-pain + decent budget for our services
 HIGH_FIT_INDUSTRIES = {
@@ -87,6 +112,9 @@ class ScoreBreakdown:
     budget_indicator: float
     solution_fit: float
     timing_urgency: float
+    contact_availability: float
+    personalization_quality: float
+    risk_penalty: float
     total: float
     grade: str
     reasoning: list[str] = field(default_factory=list)
@@ -234,19 +262,169 @@ def timing_urgency_score(
     ]
 
 
+def contact_availability_score(
+    has_phone: bool,
+    has_email: bool,
+    has_social: bool,
+    has_website: bool,
+    has_address: bool,
+) -> tuple[float, list[str]]:
+    """Sprint 1 / brief: 'Email/WA/LinkedIn tersedia' (max 10/100).
+
+    A prospect we can't reach is worth less. Strong contact info
+    across multiple channels = higher score. We accept partial
+    coverage (only 1 channel is OK) but penalize zero-coverage.
+    """
+    channels: list[str] = []
+    if has_phone:
+        channels.append("phone")
+    if has_email:
+        channels.append("email")
+    if has_social:
+        channels.append("social")
+    if has_website:
+        channels.append("website")
+    if has_address:
+        channels.append("address")
+
+    n = len(channels)
+    if n == 0:
+        return 0.0, ["No contact channels — unreachable"]
+    if n == 1:
+        return 40.0, [f"1 contact channel: {channels[0]}"]
+    if n == 2:
+        return 70.0, [f"2 contact channels: {', '.join(channels)}"]
+    if n == 3:
+        return 90.0, [f"3 contact channels: {', '.join(channels[:3])}"]
+    return 100.0, [f"{n} contact channels available"]
+
+
+def personalization_quality_score(
+    pains: list[dict],
+    industry: str | None,
+) -> tuple[float, list[str]]:
+    """Sprint 1 / brief: 'Ada insight spesifik untuk outreach' (max 5/100).
+
+    Measures how much *specific* signal we have to personalize the
+    opening message. Generic pains ("no website") score lower than
+    specific pains ("no booking system + slow response 4.2s + manual
+    WA handling"). 1-2 specific pains is enough for a good hook.
+    """
+    if not pains:
+        return 10.0, ["No pains — generic outreach only"]
+
+    # Specific pain kinds (concrete, actionable in a message) vs
+    # generic (less personal).
+    SPECIFIC_KINDS = frozenset({
+        "no_booking_system", "no_wa_business", "no_pos",
+        "slow_site", "stale_website", "no_ssl", "no_payment",
+        "no_mobile_friendly", "has_console_errors",
+    })
+    GENERIC_KINDS = frozenset({
+        "no_website",  # rare; if no site, we have nothing to audit
+    })
+
+    specific = sum(1 for p in pains if p.get("kind") in SPECIFIC_KINDS)
+    generic = sum(1 for p in pains if p.get("kind") in GENERIC_KINDS)
+    other = len(pains) - specific - generic
+
+    # Score: more specific = better. Industry match is a small bonus
+    industry_bonus = 10.0 if (industry and any(
+        k in (industry or "").lower() for k in HIGH_FIT_INDUSTRIES
+    )) else 0.0
+
+    if specific >= 3:
+        base = 90.0
+    elif specific == 2:
+        base = 75.0
+    elif specific == 1:
+        base = 50.0
+    else:
+        base = 20.0  # only generic/other pains
+
+    base += industry_bonus
+    base = _clamp(base, 0, 100)
+
+    reasons = [f"{specific} specific, {generic} generic pain(s)"]
+    if industry_bonus:
+        reasons.append("Industry match — good hook material")
+    return base, reasons
+
+
+def risk_penalty_score(
+    source: str | None,
+    has_phone: bool,
+    has_email: bool,
+    has_industry: bool,
+    has_website: bool,
+) -> tuple[float, list[str]]:
+    """Sprint 1 / brief: 'Data tidak valid, sumber rawan ToS, kontak
+    tidak jelas' (max 20).
+
+    Penalties (additive, capped at RISK_PENALTY_MAX):
+      + source reputation  (e.g., google noisy = -10)
+      + missing both phone AND email   (-8, hard to outreach)
+      + missing industry (we can't score fit)  (-3)
+      + no website (can't audit)             (-2)
+    """
+    penalties: list[tuple[float, str]] = []
+
+    # Source reputation
+    src_pen = SOURCE_RISK_PENALTY.get((source or "").lower(), 5.0)
+    penalties.append(
+        (src_pen, f"Source '{source or 'unknown'}' (reputation)")
+    )
+
+    # Contact info (both missing is bad)
+    if not has_phone and not has_email:
+        penalties.append((8.0, "No phone AND no email — hard to outreach"))
+
+    # Industry unknown
+    if not has_industry:
+        penalties.append((3.0, "Industry unknown — can't score fit"))
+
+    # No website
+    if not has_website:
+        penalties.append((2.0, "No website — can't audit"))
+
+    total = sum(p for p, _ in penalties)
+    capped = min(total, RISK_PENALTY_MAX)
+    reasons = [f"-{p}: {r}" for p, r in penalties if p > 0]
+    if capped < total:
+        reasons.append(f"(capped at -{RISK_PENALTY_MAX})")
+    return capped, reasons
+
+
 def compute_score(
     n_signals: int,
     pains: list[dict],
     industry: str | None,
     location_city: str | None,
     discovered_at: datetime,
+    *,
+    # Sprint 1 / brief: extra inputs for the 3 new factors
+    has_phone: bool = False,
+    has_email: bool = False,
+    has_social: bool = False,
+    has_address: bool = False,
+    has_website: bool = False,
+    source: str | None = None,
 ) -> ScoreBreakdown:
-    """Compute the full 5-factor score breakdown."""
+    """Compute the 7-factor score + risk penalty breakdown."""
     sig, sig_reasons = signal_strength_score(n_signals, len(pains))
     pain_s, pain_reasons = pain_severity_score(pains)
     budget, budget_reasons = budget_indicator_score(industry, location_city)
     fit, fit_reasons = solution_fit_score(industry, pains)
     timing, timing_reasons = timing_urgency_score(discovered_at)
+    contact, contact_reasons = contact_availability_score(
+        has_phone, has_email, has_social, has_website, has_address,
+    )
+    personalization, personalization_reasons = personalization_quality_score(
+        pains, industry,
+    )
+    risk, risk_reasons = risk_penalty_score(
+        source, has_phone, has_email, bool(industry), bool(location_city),
+    )
 
     weighted = (
         sig * WEIGHTS["signal_strength"]
@@ -254,17 +432,31 @@ def compute_score(
         + budget * WEIGHTS["budget_indicator"]
         + fit * WEIGHTS["solution_fit"]
         + timing * WEIGHTS["timing_urgency"]
+        + contact * WEIGHTS["contact_availability"]
+        + personalization * WEIGHTS["personalization_quality"]
     )
-    total = _clamp(weighted, 0, 100)
+    total = _clamp(weighted - risk, 0, 100)
     grade = grade_for_score(total)
 
-    reasoning = sig_reasons + pain_reasons + budget_reasons + fit_reasons + timing_reasons
+    reasoning = (
+        sig_reasons
+        + pain_reasons
+        + budget_reasons
+        + fit_reasons
+        + timing_reasons
+        + contact_reasons
+        + personalization_reasons
+        + risk_reasons
+    )
     return ScoreBreakdown(
         signal_strength=round(sig, 1),
         pain_severity=round(pain_s, 1),
         budget_indicator=round(budget, 1),
         solution_fit=round(fit, 1),
         timing_urgency=round(timing, 1),
+        contact_availability=round(contact, 1),
+        personalization_quality=round(personalization, 1),
+        risk_penalty=round(risk, 1),
         total=round(total, 1),
         grade=grade,
         reasoning=reasoning,

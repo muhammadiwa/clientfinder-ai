@@ -103,6 +103,11 @@ async def enrich_prospect(
         tech = audit_tech(site, html_snippet=html_snippet)
 
         # 3. Pain detection
+        # Sprint 1 / Phase 1.2: pass 3 new audit signals
+        # (has_viewport_meta, payment_gateways, console_errors).
+        # console_errors comes from a future site_features.py
+        # Playwright audit — for now we default to [] (no console
+        # errors detected) so the existing call site works.
         pains = detect_pains(
             website=prospect.website,
             industry=prospect.industry,
@@ -114,16 +119,28 @@ async def enrich_prospect(
             has_pos=has_pos,
             response_time_ms=site.response_time_ms,
             has_ssl=site.has_ssl,
+            has_viewport_meta=site.has_viewport_meta,
+            payment_gateways=site.payment_gateways,
+            console_errors=[],  # TODO: wire from site_features.py
         )
 
-        # 4. Score (no signals table yet; use pain count as proxy)
-        n_signals = 0  # TODO: count from signals table
+        # 4. Score (7 factors + risk penalty, Sprint 1)
+        n_signals = 0  # TODO: count from signals table (T9.0)
+        # Sprint 1: read has_social from extra (T8.6 enrichment stores it)
+        has_social = bool((prospect.raw_data or {}).get("social"))
+        has_address = bool((prospect.raw_data or {}).get("location_address"))
         score = compute_score(
             n_signals=n_signals,
             pains=pains,
             industry=prospect.industry,
             location_city=prospect.location_city,
             discovered_at=prospect.discovered_at or datetime.now(timezone.utc),
+            has_phone=bool(prospect.phone),
+            has_email=bool(prospect.email),
+            has_social=has_social,
+            has_address=has_address,
+            has_website=bool(prospect.website),
+            source=prospect.source,
         )
 
         # 5. Persist TechStack (1:1, upsert)
@@ -189,6 +206,9 @@ async def enrich_prospect(
                         "budget_indicator": score.budget_indicator,
                         "solution_fit": score.solution_fit,
                         "timing_urgency": score.timing_urgency,
+                        "contact_availability": score.contact_availability,
+                        "personalization_quality": score.personalization_quality,
+                        "risk_penalty": score.risk_penalty,
                     },
                 },
             )
@@ -214,6 +234,9 @@ async def enrich_prospect(
                 "budget_indicator": score.budget_indicator,
                 "solution_fit": score.solution_fit,
                 "timing_urgency": score.timing_urgency,
+                "contact_availability": score.contact_availability,
+                "personalization_quality": score.personalization_quality,
+                "risk_penalty": score.risk_penalty,
             },
             "reasoning": score.reasoning,
             "site": {
@@ -222,6 +245,10 @@ async def enrich_prospect(
                 "response_time_ms": site.response_time_ms,
                 "status_code": site.status_code,
                 "error": site.error,
+                # Sprint 1 / Phase 1.2
+                "has_viewport_meta": site.has_viewport_meta,
+                "payment_gateways": site.payment_gateways,
+                "body_bytes_read": site.body_bytes_read,
             },
             "tech": {
                 "cms": tech.cms,
@@ -266,6 +293,13 @@ async def _upsert_tech_stack(
     if site.status_code and site.status_code >= 400:
         issues.append(f"http_{site.status_code}")
 
+    # Sprint 1 / Phase 1.2: mobile_friendly + payment_gateways
+    # + body_bytes_read all from the lightweight audit. console_errors
+    # would come from a future Playwright-based audit (T8.7+).
+    issues_extra = dict(issues) if issues else {}
+    if not site.has_viewport_meta:
+        issues_extra["no_viewport_meta"] = True
+
     fields = dict(
         cms=tech.cms,
         framework=tech.framework,
@@ -273,11 +307,11 @@ async def _upsert_tech_stack(
         hosting_provider=tech.cdn or tech.server,
         has_ssl=site.has_ssl if site.reachable else None,
         ssl_issuer=None,
-        mobile_friendly=None,
+        mobile_friendly=site.has_viewport_meta if site.reachable else None,
         page_speed_score=None,
         technologies=technologies,
         security_headers={},
-        issues=issues,
+        issues=issues_extra,
         audited_at=datetime.now(timezone.utc),
     )
 
