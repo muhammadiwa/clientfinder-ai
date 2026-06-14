@@ -107,7 +107,7 @@ async def social_scan_and_persist(
     On any failure (cookies missing, LLM down, etc.) returns:
         {"posts_fetched": 0, "signals_detected": 0, "signals": [], "skipped": "reason"}
     """
-    from app.models.lead import Signal
+    from app.models.prospect import Signal
 
     # Load prospect
     from sqlalchemy import select

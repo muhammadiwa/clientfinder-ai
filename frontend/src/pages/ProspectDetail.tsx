@@ -295,8 +295,12 @@ export function ProspectDetailPage() {
                   <GradePill grade={prospect.quality_grade} />
                 )}
                 <TierBadge
-                  tier={(classifyResult?.tier ?? null) as Tier | null}
-                  confidence={classifyResult?.tier_confidence}
+                  tier={
+                    (classifyResult?.tier ?? prospect.tier ?? null) as Tier | null
+                  }
+                  confidence={
+                    classifyResult?.tier_confidence ?? prospect.tier_confidence
+                  }
                 />
                 <StatusPill status={prospect.status} />
               </div>
