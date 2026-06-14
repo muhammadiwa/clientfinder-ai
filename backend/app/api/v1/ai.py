@@ -4,16 +4,18 @@ AI endpoints — proxy LLM calls (T5 Group 2).
 Frontend calls /api/v1/ai/* to generate hooks + pain analysis.
 API key stays server-side. This avoids exposing GROQ_API_KEY in
 the browser bundle.
-"""
-from __future__ import annotations
 
+Note: No `from __future__ import annotations` here — slowapi
+needs UUID to be resolvable as a real type, not a string.
+"""
 import logging
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.core.deps import CurrentUser
+from app.core.security import rate_limit_ai
 from app.services.analyzer.hook_generator import generate_hooks_for_prospect
 
 logger = logging.getLogger("clientfinder.api.ai")
@@ -22,7 +24,9 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 @router.post("/hooks/{prospect_id}")
+@rate_limit_ai()
 async def generate_hooks(
+    request: Request,
     prospect_id: UUID,
     current_user: CurrentUser,
 ) -> dict[str, Any]:
