@@ -17,6 +17,7 @@ import {
 import { toast } from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
+import { LanguagePicker } from "@/components/ui/language-picker";
 import { useAuthStore } from "@/stores/auth";
 import { useMe, useLogout } from "@/hooks/useAuth";
 import { MobileNav } from "./MobileNav";
@@ -192,36 +193,44 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
               </button>
             }
           >
-            <MenuHeader>
-              <p className="text-sm font-medium text-foreground truncate">
-                {displayName}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {displayEmail}
-              </p>
-              <p className="text-[10px] text-muted-foreground capitalize mt-0.5 flex items-center gap-1">
-                <ShieldCheck className="h-2.5 w-2.5" />
-                {displayRole}
-              </p>
-            </MenuHeader>
+             <MenuHeader>
+               <p className="text-sm font-medium text-foreground truncate">
+                 {displayName}
+               </p>
+               <p className="text-xs text-muted-foreground truncate">
+                 {displayEmail}
+               </p>
+               <p className="text-[10px] text-muted-foreground capitalize mt-0.5 flex items-center gap-1">
+                 <ShieldCheck className="h-2.5 w-2.5" />
+                 {displayRole}
+               </p>
+             </MenuHeader>
 
-            <MenuItem
-              to="/settings"
-              icon={<Settings className="h-4 w-4" />}
-            >
-              Settings
-            </MenuItem>
+             {/* T8.5++++++: language toggle. Lets the user
+                 verify the i18n system end-to-end. */}
+             <div className="px-1.5 py-1.5">
+               <LanguagePicker />
+             </div>
 
-            <MenuSeparator />
+             <MenuSeparator />
 
-            <MenuItem
-              onClick={handleLogout}
-              variant="destructive"
-              icon={<LogOut className="h-4 w-4" />}
-              disabled={logout.isPending}
-            >
-              {logout.isPending ? "Signing out…" : "Sign out"}
-            </MenuItem>
+             <MenuItem
+               to="/settings"
+               icon={<Settings className="h-4 w-4" />}
+             >
+               {t.nav.settings}
+             </MenuItem>
+
+             <MenuSeparator />
+
+             <MenuItem
+               onClick={handleLogout}
+               variant="destructive"
+               icon={<LogOut className="h-4 w-4" />}
+               disabled={logout.isPending}
+             >
+               {logout.isPending ? "Signing out…" : t.auth.signOut}
+             </MenuItem>
           </DropdownMenu>
         ) : (
           <Button asChild variant="ghost" size="sm">
