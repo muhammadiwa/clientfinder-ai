@@ -399,20 +399,37 @@ async def _compute_time_to_enrich(
 async def _compute_daily_volume(
     db: AsyncSession, start: datetime
 ) -> list[DailyVolume]:
-    """Sent + replied counts per day (for sparkline)."""
-    # Generate all days in range
+    """3-series daily volume for the sparkline:
+    - created: total message CREATION events (by created_at)
+    - sent: messages that were SENT (by sent_at)
+    - replied: messages that received a reply
+
+    T8.5+++++++ fix: added `created` series so the chart
+    has real data even when 0 messages have been sent
+    (the previous version only tracked sent_at, which
+    is null until the message is actually dispatched).
+    The 3-series view shows the full pipeline flow.
+    """
     end = datetime.now(timezone.utc)
     days: list[datetime] = []
     cur = datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
     while cur <= end:
         days.append(cur)
         cur = cur + timedelta(days=1)
-    # Query sent + replied per day
+    # Query created (by created_at) + sent + replied per day.
+    # Use UNION ALL to keep the SQL simple — 3 separate
+    # GROUP BY queries on (date, action).
+    # Query 1: created events (by created_at, all statuses)
+    created_q = select(
+        func.date(Message.created_at).label("d"),
+        func.count(Message.id).label("count"),
+    ).where(
+        Message.created_at >= start,
+    ).group_by(func.date(Message.created_at))
+    created_rows = (await db.execute(created_q)).all()
+    # Query 2: sent events (by sent_at)
     sent_q = select(
         func.date(Message.sent_at).label("d"),
-        func.sum(
-            case((Message.status == "replied", 1), else_=0)
-        ).label("replied"),
         func.count(Message.id).label("sent"),
     ).where(
         Message.sent_at >= start,
@@ -420,18 +437,36 @@ async def _compute_daily_volume(
             ("sent", "delivered", "opened", "clicked", "replied")
         ),
     ).group_by(func.date(Message.sent_at))
-    rows = (await db.execute(sent_q)).all()
-    by_date: dict[str, tuple[int, int]] = {}
-    for d, replied, sent in rows:
-        by_date[str(d)] = (int(sent or 0), int(replied or 0))
+    sent_rows = (await db.execute(sent_q)).all()
+    # Query 3: replied events (by sent_at, status=replied)
+    replied_q = select(
+        func.date(Message.sent_at).label("d"),
+        func.count(Message.id).label("replied"),
+    ).where(
+        Message.sent_at >= start,
+        Message.status == "replied",
+    ).group_by(func.date(Message.sent_at))
+    replied_rows = (await db.execute(replied_q)).all()
+    # Merge into per-day dict
+    by_date: dict[str, dict[str, int]] = {}
+    for d, count in created_rows:
+        by_date[str(d)] = {"created": int(count or 0), "sent": 0, "replied": 0}
+    for d, sent in sent_rows:
+        by_date.setdefault(str(d), {"created": 0, "sent": 0, "replied": 0})
+        by_date[str(d)]["sent"] = int(sent or 0)
+    for d, replied in replied_rows:
+        by_date.setdefault(str(d), {"created": 0, "sent": 0, "replied": 0})
+        by_date[str(d)]["replied"] = int(replied or 0)
+    # Build output for every day in range (fill missing with 0)
     out: list[DailyVolume] = []
     for d in days:
-        s, r = by_date.get(d.strftime("%Y-%m-%d"), (0, 0))
+        v = by_date.get(d.strftime("%Y-%m-%d"), {"created": 0, "sent": 0, "replied": 0})
         out.append(
             DailyVolume(
                 date=d.strftime("%Y-%m-%d"),
-                sent=s,
-                replied=r,
+                created=v["created"],
+                sent=v["sent"],
+                replied=v["replied"],
             )
         )
     return out

@@ -192,6 +192,7 @@ export interface OutreachChannelStats {
 
 export interface DailyVolume {
   date: string;
+  created: number;
   sent: number;
   replied: number;
 }
