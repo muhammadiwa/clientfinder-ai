@@ -51,12 +51,31 @@ class OutreachChannelStats(BaseModel):
     approval_rate: float  # approved / (drafts + pending)
 
 
-class DailyVolume(BaseModel):
-    """Volume per day for the last N days (sparkline data)."""
+class DailyPipeline(BaseModel):
+    """Prospect pipeline activity per day (sparkline data).
+
+    T8.5+++++++ (telemetry fix): this is the CORRECT
+    schema for the 'Aktivitas pipeline' Dashboard chart.
+    Tracks PROSPECT pipeline events (not outreach events).
+
+    4 series mapped to prospect pipeline stages:
+    - baru (new): count of prospect_created actions
+    - dinilai (scored): count of analysis_completed +
+      prospect_enriched actions (T5 analyst pipeline)
+    - dihubungi (contacted): count of prospect_updated
+      actions where details.status='contacted'
+    - menang (won): count of prospect_updated actions
+      where details.status='won'
+
+    Source of truth: the 'activities' table. Each action
+    event has a created_at (the day) + optional details.
+    """
 
     date: str  # YYYY-MM-DD
-    sent: int
-    replied: int
+    baru: int
+    dinilai: int
+    dihubungi: int
+    menang: int
 
 
 class ApprovalFunnelStats(BaseModel):
@@ -134,7 +153,7 @@ class AnalyticsOverview(BaseModel):
     total_messages_sent: int
     outreach_by_channel: list[OutreachChannelStats]
     approval_funnel: ApprovalFunnelStats
-    daily_volume: list[DailyVolume]  # last 30 days for sparkline
+    daily_volume: list[DailyPipeline]  # last 30 days for sparkline
 
     # Pipeline (C)
     pipeline_by_stage: list[PipelineStageCount]

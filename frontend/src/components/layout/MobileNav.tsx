@@ -9,10 +9,11 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT, getT } from "@/i18n/id";
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/prospects", label: "Prospects", icon: Users },
+  { to: "/dashboard", label: getT().nav.dashboard, icon: LayoutDashboard },
+  { to: "/prospects", label: getT().nav.prospects, icon: Users },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
@@ -24,6 +25,7 @@ const navItems = [
  * - Same nav items + active state as Sidebar (dark)
  */
 export function MobileNav() {
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   return (
@@ -32,7 +34,7 @@ export function MobileNav() {
         type="button"
         className="md:hidden p-2 -ml-2 rounded-md hover:bg-accent text-foreground"
         onClick={() => setOpen(true)}
-        aria-label="Open menu"
+        aria-label={t.nav.openMenu}
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -50,7 +52,7 @@ export function MobileNav() {
                 type="button"
                 onClick={() => setOpen(false)}
                 className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50"
-                aria-label="Close menu"
+                aria-label={t.nav.closeMenu}
               >
                 <X className="h-5 w-5" />
               </button>

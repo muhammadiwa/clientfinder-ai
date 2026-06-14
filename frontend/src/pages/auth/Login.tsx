@@ -14,9 +14,10 @@ import {
 import { FormField, Input } from "@/components/ui/input";
 import { useLogin } from "@/hooks/useAuth";
 import { formatFieldError } from "@/lib/formatError";
-import { t } from "@/i18n/id";
+import { useT } from "@/i18n/id";
 
 export function LoginPage() {
+  const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
   const login = useLogin();

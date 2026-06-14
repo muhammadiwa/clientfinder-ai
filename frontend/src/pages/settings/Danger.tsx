@@ -7,6 +7,7 @@ import {
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/id";
 
 /**
  * Settings / Danger zone section
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
  * Per audit finding #4: visually communicates "not actionable yet".
  */
 export function DangerSection() {
+  const t = useT();
   return (
     <div className="space-y-6">
       <div>
@@ -40,7 +42,7 @@ export function DangerSection() {
           {/* Export data */}
           <DangerRow
             icon={<Download className="h-4 w-4" />}
-            title="Export all data"
+            title={t.danger.exportAllData}
             description="Download a complete backup of your prospects, messages, and settings as JSON."
             actionLabel="Export"
             disabled
@@ -50,7 +52,7 @@ export function DangerSection() {
           {/* Rotate API key */}
           <DangerRow
             icon={<KeyRound className="h-4 w-4" />}
-            title="Rotate API key"
+            title={t.danger.rotateApiKey}
             description="Generate a new secret for any active integration. Old key will stop working immediately."
             actionLabel="Rotate"
             disabled
@@ -60,7 +62,7 @@ export function DangerSection() {
           {/* Delete account */}
           <DangerRow
             icon={<Trash2 className="h-4 w-4" />}
-            title="Delete account"
+            title={t.danger.deleteAccount}
             description="Permanently delete your account and all associated data. This cannot be undone."
             actionLabel="Delete account"
             danger

@@ -17,6 +17,7 @@ import {
 import { toast } from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
+import { LanguagePicker } from "@/components/ui/language-picker";
 import { useAuthStore } from "@/stores/auth";
 import { useMe, useLogout } from "@/hooks/useAuth";
 import { MobileNav } from "./MobileNav";
@@ -27,12 +28,13 @@ import {
   MenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useT, getT } from "@/i18n/id";
 
 const routeLabels: Record<string, string> = {
-  dashboard: "Dashboard",
-  prospects: "Prospects",
-  pipeline: "Pipeline",
-  settings: "Settings",
+  dashboard: getT().nav.dashboard,
+  prospects: getT().nav.prospects,
+  pipeline: getT().nav.pipeline,
+  settings: getT().nav.settings,
 };
 
 interface TopbarProps {
@@ -40,6 +42,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
+  const t = useT();
   // onShowHelp is wired in Layout via global keyboard shortcuts (?).
   // Kept as a prop for future topbar-level "?" button.
   void _onShowHelp;
@@ -61,10 +64,10 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
   const handleLogout = async () => {
     try {
       await logout.mutateAsync();
-      toast.success("Signed out");
+      toast.success(t.auth.signedOut);
       navigate("/login");
     } catch {
-      toast.error("Signed out locally");
+      toast.error(t.auth.signedOutLocally);
       clearAuth();
       navigate("/login");
     }
@@ -150,11 +153,11 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             type="search"
-            placeholder="Search prospects…"
+            placeholder={t.topbar.searchProspects}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search prospects"
-            className="h-9 w-64 pl-9 pr-3 rounded-md border border-input bg-background/50 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 placeholder:text-muted-foreground transition-colors"
+            aria-label={t.topbar.searchAriaLabel}
+            className="h-10 pl-9 w-64"
           />
         </form>
 
@@ -163,7 +166,7 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
           variant="ghost"
           size="icon"
           className="relative"
-          aria-label="Notifications"
+          aria-label={t.topbar.notifications}
         >
           <Bell className="h-4 w-4" />
           <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-rose-500" />
@@ -177,7 +180,7 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
             trigger={
               <button
                 type="button"
-                aria-label="User menu"
+                aria-label={t.topbar.userMenu}
                 className={cn(
                   "h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold text-sm",
                   "bg-gradient-to-br from-violet-500 to-indigo-600",
@@ -191,40 +194,48 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
               </button>
             }
           >
-            <MenuHeader>
-              <p className="text-sm font-medium text-foreground truncate">
-                {displayName}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {displayEmail}
-              </p>
-              <p className="text-[10px] text-muted-foreground capitalize mt-0.5 flex items-center gap-1">
-                <ShieldCheck className="h-2.5 w-2.5" />
-                {displayRole}
-              </p>
-            </MenuHeader>
+             <MenuHeader>
+               <p className="text-sm font-medium text-foreground truncate">
+                 {displayName}
+               </p>
+               <p className="text-xs text-muted-foreground truncate">
+                 {displayEmail}
+               </p>
+               <p className="text-[10px] text-muted-foreground capitalize mt-0.5 flex items-center gap-1">
+                 <ShieldCheck className="h-2.5 w-2.5" />
+                 {displayRole}
+               </p>
+             </MenuHeader>
 
-            <MenuItem
-              to="/settings"
-              icon={<Settings className="h-4 w-4" />}
-            >
-              Settings
-            </MenuItem>
+             {/* T8.5++++++: language toggle. Lets the user
+                 verify the i18n system end-to-end. */}
+             <div className="px-1.5 py-1.5">
+               <LanguagePicker />
+             </div>
 
-            <MenuSeparator />
+             <MenuSeparator />
 
-            <MenuItem
-              onClick={handleLogout}
-              variant="destructive"
-              icon={<LogOut className="h-4 w-4" />}
-              disabled={logout.isPending}
-            >
-              {logout.isPending ? "Signing out…" : "Sign out"}
-            </MenuItem>
+             <MenuItem
+               to="/settings"
+               icon={<Settings className="h-4 w-4" />}
+             >
+               {t.nav.settings}
+             </MenuItem>
+
+             <MenuSeparator />
+
+             <MenuItem
+               onClick={handleLogout}
+               variant="destructive"
+               icon={<LogOut className="h-4 w-4" />}
+               disabled={logout.isPending}
+             >
+               {logout.isPending ? "Signing out…" : t.auth.signOut}
+             </MenuItem>
           </DropdownMenu>
         ) : (
           <Button asChild variant="ghost" size="sm">
-            <Link to="/login">Sign in</Link>
+            <Link to="/login">{t.auth.signIn}</Link>
           </Button>
         )}
       </div>

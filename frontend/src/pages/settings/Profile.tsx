@@ -1,5 +1,6 @@
 import { useAuthStore } from "@/stores/auth";
 import { useMe } from "@/hooks/useAuth";
+import { useT } from "@/i18n/id";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { Mail, ShieldCheck, User, Pencil, Clock, KeyRound } from "lucide-react";
  * for groups, sticky submit button at bottom (when editable).
  */
 export function ProfileSection() {
+  const t = useT();
   const user = useAuthStore((s) => s.user);
   const me = useMe(true);
 
@@ -30,17 +32,17 @@ export function ProfileSection() {
     <div className="space-y-6">
       {/* Section header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t.profile.title}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Your account information
+          {t.profile.subtitle}
         </p>
       </div>
 
       {/* Identity card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Identity</CardTitle>
-          <CardDescription>Your avatar and basic info</CardDescription>
+          <CardTitle className="text-base">{t.profile.identity}</CardTitle>
+          <CardDescription>{t.profile.identityDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-5">
@@ -59,13 +61,13 @@ export function ProfileSection() {
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  Joined {createdAt}
+                  {t.profile.joined.replace("{date}", createdAt)}
                 </span>
               </div>
             </div>
             <Button variant="outline" size="sm" disabled>
               <Pencil className="h-3.5 w-3.5" />
-              Edit
+              {t.profile.edit}
             </Button>
           </div>
         </CardContent>
@@ -74,9 +76,9 @@ export function ProfileSection() {
       {/* Account fields (read-only for now) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Account</CardTitle>
+          <CardTitle className="text-base">{t.profile.account}</CardTitle>
           <CardDescription>
-            Email, name, and other account fields
+            {t.profile.accountDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -84,28 +86,28 @@ export function ProfileSection() {
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
-                Full name
+                {t.profile.fullName}
               </label>
               <Input value={displayName} disabled className="h-10" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                Email
+                {t.profile.email}
               </label>
               <Input value={displayEmail} disabled className="h-10" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                Role
+                {t.profile.role}
               </label>
               <Input value={displayRole} disabled className="h-10 capitalize" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
-                User ID
+                {t.profile.userId}
               </label>
               <Input
                 value={me.data?.id ?? user?.id ?? ""}
@@ -115,8 +117,7 @@ export function ProfileSection() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-4">
-            Profile editing will be available once multi-user support is
-            added in T8.
+            {t.profile.profileEditingComing}
           </p>
         </CardContent>
       </Card>

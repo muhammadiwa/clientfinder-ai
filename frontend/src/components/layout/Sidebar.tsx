@@ -8,16 +8,16 @@ import {
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { t } from "@/i18n/id";
+import { getT } from "@/i18n/id";
 import { usePendingApprovalCount } from "@/hooks/useOutreach";
 
 const navItems = [
-  { to: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard },
-  { to: "/scout", label: t.nav.scout, icon: Sparkles },
-  { to: "/prospects", label: t.nav.prospects, icon: Users },
-  { to: "/pipeline", label: t.nav.pipeline, icon: KanbanSquare },
-  { to: "/outreach", label: t.nav.outreach, icon: Send, badge: "pending" as const },
-  { to: "/analytics", label: t.nav.analytics, icon: BarChart3 },
+  { to: "/dashboard", label: getT().nav.dashboard, icon: LayoutDashboard },
+  { to: "/scout", label: getT().nav.scout, icon: Sparkles },
+  { to: "/prospects", label: getT().nav.prospects, icon: Users },
+  { to: "/pipeline", label: getT().nav.pipeline, icon: KanbanSquare },
+  { to: "/outreach", label: getT().nav.outreach, icon: Send, badge: "pending" as const },
+  { to: "/analytics", label: getT().nav.analytics, icon: BarChart3 },
   // Settings moved to Topbar avatar dropdown (PR #23 audit fix)
   // — single source of truth, less sidebar clutter
 ];
@@ -38,6 +38,8 @@ export function Sidebar() {
   // cache so the Outreach nav item shows a live count
   // of pending_approval messages. Auto-updates when the
   // Outreach page optimistically removes messages.
+  // (All t.* usages in this component are module-level
+  // — see the const navItems array at the top.)
   const pendingCount = usePendingApprovalCount();
   return (
     <aside className="hidden md:flex w-60 bg-sidebar-gradient text-slate-100 h-screen sticky top-0 flex-col border-r border-slate-800/50">

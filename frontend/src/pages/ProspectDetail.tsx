@@ -37,7 +37,7 @@ import {
 } from "@/api/prospects";
 import { generateHooks } from "@/services/ai/ai-analyzer";
 import { cn } from "@/lib/utils";
-import { t } from "@/i18n/id";
+import { useT } from "@/i18n/id";
 
 /**
  * ProspectDetail — full analyst view (T5 Group 3).
@@ -54,6 +54,7 @@ import { t } from "@/i18n/id";
  *   - Copy hook to clipboard
  */
 export function ProspectDetailPage() {
+  const t = useT();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 

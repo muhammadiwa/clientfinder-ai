@@ -16,7 +16,7 @@ import { FormField, Input } from "@/components/ui/input";
 import { useRegister } from "@/hooks/useAuth";
 import { isApiError } from "@/api/client";
 import { formatApiError, formatFieldError } from "@/lib/formatError";
-import { t } from "@/i18n/id";
+import { useT } from "@/i18n/id";
 
 const PERKS = [
   "Penemuan prospek bertenaga AI dari Google Maps, Twitter, Threads",
@@ -25,6 +25,7 @@ const PERKS = [
 ];
 
 export function RegisterPage() {
+  const t = useT();
   const navigate = useNavigate();
   const register = useRegister();
 

@@ -21,12 +21,12 @@ import {
 } from "@/api/analytics";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { t } from "@/i18n/id";
+import { useT, getT } from "@/i18n/id";
 
 const RANGE_OPTIONS = [
-  { value: 7, label: t.analytics.period7d },
-  { value: 30, label: t.analytics.period30d },
-  { value: 90, label: t.analytics.period90d },
+  { value: 7, label: getT().analytics.period7d },
+  { value: 30, label: getT().analytics.period30d },
+  { value: 90, label: getT().analytics.period90d },
 ];
 
 const GRADE_COLORS: Record<string, string> = {
@@ -51,6 +51,7 @@ const CHANNEL_COLORS: Record<string, string> = {
 // sections flow naturally down the page, every metric has a delta hint
 // or sparkline where useful.
 export function AnalyticsPage() {
+  const t = useT();
   const [days, setDays] = useState(30);
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -98,14 +99,14 @@ export function AnalyticsPage() {
           value={data.total_leads}
           icon={<Users className="h-4 w-4" />}
           tone="violet"
-          sparkline={data.daily_volume.map((v) => v.sent)}
+          sparkline={data.daily_volume.map((v) => v.baru)}
         />
         <HeroMetric
           label={t.analytics.messagesSent}
           value={data.total_messages_sent}
           icon={<Send className="h-4 w-4" />}
           tone="emerald"
-          sparkline={data.daily_volume.map((v) => v.sent)}
+          sparkline={data.daily_volume.map((v) => v.baru)}
         />
         <HeroMetric
           label={t.analytics.replyRate}
@@ -706,25 +707,26 @@ function FunnelBars({
     approval_rate: number;
   };
 }) {
+  const t = useT();
   const stages = [
-    { label: "Drafts", value: funnel.drafts, color: "bg-slate-500" },
+    { label: t.analytics.drafts, value: funnel.drafts, color: "bg-slate-500" },
     {
-      label: "Pending",
+      label: t.analytics.pending,
       value: funnel.pending_approval,
       color: "bg-amber-500",
     },
     {
-      label: "Approved",
+      label: t.analytics.approved,
       value: funnel.approved,
       color: "bg-sky-500",
     },
-    { label: "Sent", value: funnel.sent, color: "bg-emerald-500" },
+    { label: t.analytics.sentFunnel, value: funnel.sent, color: "bg-emerald-500" },
     {
-      label: "Delivered",
+      label: t.analytics.delivered,
       value: funnel.delivered,
       color: "bg-emerald-400",
     },
-    { label: "Replied", value: funnel.replied, color: "bg-violet-500" },
+    { label: t.analytics.repliedFunnel, value: funnel.replied, color: "bg-violet-500" },
   ];
   const max = Math.max(...stages.map((s) => s.value), 1);
   return (
@@ -744,7 +746,7 @@ function FunnelBars({
         </li>
       ))}
       <li className="pt-2 mt-2 border-t border-border flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">Approval rate</span>
+        <span className="text-muted-foreground">{t.analytics.approvalRate}</span>
         <span className="font-bold num tabular-nums text-emerald-600">
           {funnel.approval_rate.toFixed(0)}%
         </span>
@@ -756,33 +758,34 @@ function FunnelBars({
 function DailyVolumeChart({
   data,
 }: {
-  data: { date: string; sent: number; replied: number }[];
+  // T8.5+++++++ (telemetry fix): consumes the
+  // DailyPipeline shape from /analytics/overview.
+  // We render the 'baru' (new prospects) series as
+  // a simple bar chart. Uses i18n key for the label
+  // (t.dashboard.new) to stay consistent with the
+  // Dashboard's pipeline chart (ab6e8d4 + PR #76).
+  data: { date: string; baru: number }[];
 }) {
+  const t = useT();
   if (data.length === 0) {
-    return <EmptyMini label="No activity in this period" />;
+    return <EmptyMini label={t.analytics.noActivityPeriod} />;
   }
-  const max = Math.max(...data.map((d) => d.sent), 1);
+  const max = Math.max(...data.map((d) => d.baru), 1);
   return (
     <div>
       <div className="flex items-end gap-0.5 h-32">
         {data.map((d) => {
-          const sentPct = (d.sent / max) * 100;
+          const baruPct = (d.baru / max) * 100;
           return (
             <div
               key={d.date}
               className="flex-1 group relative"
-              title={`${d.date}: ${d.sent} sent, ${d.replied} replied`}
+              title={`${d.date}: ${d.baru} ${t.dashboard.new.toLowerCase()}`}
             >
               <div
                 className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-violet-200 to-violet-400 dark:from-violet-900 dark:to-violet-600 rounded-t"
-                style={{ height: `${sentPct}%`, minHeight: "2px" }}
+                style={{ height: `${baruPct}%`, minHeight: "2px" }}
               />
-              {d.replied > 0 && (
-                <div
-                  className="absolute bottom-0 left-0 right-0 bg-emerald-500 rounded-t"
-                  style={{ height: `${(d.replied / max) * 100}%`, minHeight: "1px" }}
-                />
-              )}
             </div>
           );
         })}
@@ -795,11 +798,7 @@ function DailyVolumeChart({
       <div className="flex items-center gap-3 mt-2 text-xs">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-sm bg-violet-400" />
-          <span className="text-muted-foreground">Sent</span>
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-sm bg-emerald-500" />
-          <span className="text-muted-foreground">Replied</span>
+          <span className="text-muted-foreground">{t.dashboard.new}</span>
         </span>
       </div>
     </div>

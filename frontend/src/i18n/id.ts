@@ -49,6 +49,8 @@ const STRINGS = {
     outreach: "Outreach",
     analytics: "Analitik",
     settings: "Pengaturan",
+    openMenu: "Buka menu",
+    closeMenu: "Tutup menu",
   },
 
   // Auth
@@ -62,6 +64,7 @@ const STRINGS = {
     forgotPassword: "Lupa kata sandi?",
     invalidCredentials: "Email atau kata sandi salah",
     signedOut: "Berhasil keluar",
+    signedOutLocally: "Berhasil keluar dari sesi lokal (server tidak merespons)",
     signedIn: "Berhasil masuk",
     noAccount: "Belum punya akun?",
     haveAccount: "Sudah punya akun?",
@@ -72,6 +75,50 @@ const STRINGS = {
     networkError: "Kesalahan jaringan. Silakan coba lagi.",
     signInFailed: "Gagal masuk",
     signUpFailed: "Gagal mendaftar",
+  },
+
+  // Topbar
+  topbar: {
+    searchProspects: "Cari prospek…",
+    searchAriaLabel: "Cari prospek",
+    notifications: "Notifikasi",
+    userMenu: "Menu pengguna",
+  },
+
+  // Profile (Settings)
+  profile: {
+    title: "Profil",
+    subtitle: "Informasi akun Anda",
+    identity: "Identitas",
+    identityDesc: "Avatar dan info dasar Anda",
+    account: "Akun",
+    accountDesc: "Email, nama, dan field akun lainnya",
+    fullName: "Nama lengkap",
+    email: "Email",
+    role: "Peran",
+    userId: "ID Pengguna",
+    joined: "Bergabung {date}",
+    edit: "Edit",
+    profileEditingComing: "Edit profil akan tersedia setelah multi-user support di T8.",
+  },
+
+  // Settings / Team
+  team: {
+    multiUserComing: "Multi-user support segera hadir di T8",
+  },
+
+  // Settings / Danger
+  danger: {
+    exportAllData: "Export semua data",
+    rotateApiKey: "Rotate API key",
+    deleteAccount: "Hapus akun",
+  },
+
+  // ConfirmDialog
+  confirmDialog: {
+    ariaClose: "Tutup",
+    defaultCancelText: "Batal",
+    defaultConfirmText: "Konfirmasi",
   },
 
   // Form errors (shared across pages)
@@ -220,6 +267,9 @@ const STRINGS = {
     noJobsDesc: "Mulai pekerjaan Scout pertama untuk melihat aktivitas di sini",
     noDiscoveries: "Belum ada penemuan Scout",
     noDiscoveriesDesc: "Mulai pekerjaan Scout dan prospek baru akan muncul di sini",
+    // T8.5++++++: hardcoded audit replacements
+    retry: "Coba lagi",
+    delete: "Hapus",
   },
 
   // Prospect detail
@@ -329,6 +379,18 @@ const STRINGS = {
     // Bulk
     selected: "dipilih",
     cancel: "Batal",
+    // T8.5++++++: hardcoded string audit replacements
+    approveShortcut: "Setujui (A)",
+    rejectShortcut: "Tolak (R)",
+    sendShortcut: "Kirim sekarang (S)",
+    submitForApproval: "Kirim untuk persetujuan",
+    retrySend: "Coba kirim ulang",
+    noResults: "Tidak ada hasil",
+    noDraftsYet: "Belum ada draf",
+    nothingSentYet: "Belum ada yang dikirim",
+    noFailures: "Tidak ada kegagalan",
+    deleteConfirmTitle: "Hapus pesan ini?",
+    confirmDelete: "Hapus",
   },
 
   // Analytics
@@ -431,4 +493,12 @@ const STRINGS = {
 } as const;
 
 export type Strings = typeof STRINGS;
-export const t = STRINGS;
+export default STRINGS;
+
+// T8.5++++++ (final): useT() hook + getT() function
+// replace the Proxy. See i18n/index.ts for the full
+// pattern. Existing call sites that did
+// `import { t } from "@/i18n/id"` need to be migrated
+// to `useT()` (in components) or `getT()` (module-level).
+export { useT, getT, useLocaleStore } from "./index";
+export type { Locale } from "./index";

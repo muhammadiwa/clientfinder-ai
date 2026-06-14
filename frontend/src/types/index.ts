@@ -192,8 +192,10 @@ export interface OutreachChannelStats {
 
 export interface DailyVolume {
   date: string;
-  sent: number;
-  replied: number;
+  baru: number;
+  dinilai: number;
+  dihubungi: number;
+  menang: number;
 }
 
 export interface ApprovalFunnelStats {

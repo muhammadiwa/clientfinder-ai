@@ -45,7 +45,7 @@ import {
 } from "@/api/outreach";
 import { useProspects } from "@/hooks/useProspects";
 import { getProspectDetail } from "@/api/prospects";
-import { t } from "@/i18n/id";
+import { useT } from "@/i18n/id";
 import { formatApiError } from "@/lib/formatError";
 import { cn } from "@/lib/utils";
 import type { Message, MessageChannel, OutreachStats, Prospect, Template } from "@/types";
@@ -152,6 +152,7 @@ function formatTimeShort(iso: string | null): string {
 // --- Main page ---
 
 export function OutreachPage() {
+  const t = useT();
   // Tab + list state
   const [tab, setTab] = useState<Tab>("pending_approval");
   const [filterChannel, setFilterChannel] = useState<FilterChannel>("all");
@@ -1190,9 +1191,9 @@ export function OutreachPage() {
       <ConfirmDialog
         open={deleteDialog !== null}
         onOpenChange={(o) => !o && setDeleteDialog(null)}
-        title="Delete this message?"
+        title={t.outreach.deleteConfirmTitle}
         description="This action cannot be undone. The message will be permanently removed from the queue."
-        confirmText="Delete"
+        confirmText={t.outreach.confirmDelete}
         destructive
         loading={deleteLoading}
         onConfirm={handleDeleteConfirm}
@@ -1408,6 +1409,7 @@ function MessageRow({
   onSubmit,
   onDelete,
 }: MessageRowProps) {
+  const t = useT();
   const ch = CHANNEL_STYLE[m.channel] ?? CHANNEL_STYLE.email;
   const statusBadge = STATUS_BADGE[m.status] ?? STATUS_BADGE.draft;
 
@@ -1510,7 +1512,7 @@ function MessageRow({
                   onApprove();
                 }}
                 disabled={busy}
-                title="Approve (A)"
+                title={t.outreach.approveShortcut}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 <span className="hidden lg:inline">Approve</span>
@@ -1523,7 +1525,7 @@ function MessageRow({
                   onReject();
                 }}
                 disabled={busy}
-                title="Reject (R)"
+                title={t.outreach.rejectShortcut}
               >
                 <XCircle className="h-3.5 w-3.5" />
               </Button>
@@ -1537,7 +1539,7 @@ function MessageRow({
                 onSend();
               }}
               disabled={busy}
-              title="Send now (S)"
+              title={t.outreach.sendShortcut}
             >
               <Send className="h-3.5 w-3.5" />
               <span className="hidden lg:inline">Send</span>
@@ -1551,7 +1553,7 @@ function MessageRow({
                 onSubmit();
               }}
               disabled={busy}
-              title="Submit for approval"
+              title={t.outreach.submitForApproval}
             >
               <Inbox className="h-3.5 w-3.5" />
               <span className="hidden lg:inline">Submit</span>
@@ -1565,7 +1567,7 @@ function MessageRow({
                 onSend();
               }}
               disabled={busy}
-              title="Retry send"
+              title={t.outreach.retrySend}
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span className="hidden lg:inline">Retry</span>
@@ -1700,12 +1702,13 @@ function DeliveryProgress({ status }: { status: string }) {
 }
 
 function TabEmptyState({ tab, search }: { tab: Tab; search: string }) {
+  const t = useT();
   if (search) {
     return (
       <EmptyState
         className="py-12"
         icon={<Search className="h-5 w-5" />}
-        title="No results"
+        title={t.outreach.noResults}
         description={`Nothing matches "${search}". Try a different search or clear the filter.`}
       />
     );
@@ -1719,7 +1722,7 @@ function TabEmptyState({ tab, search }: { tab: Tab; search: string }) {
             <CheckCircle2 className="h-6 w-6 text-emerald-600" />
           </div>
         }
-        title="All caught up"
+        title={t.outreach.allCaughtUp}
         description="No messages waiting for review. Inbound messages will appear here when generated."
       />
     );
@@ -1729,7 +1732,7 @@ function TabEmptyState({ tab, search }: { tab: Tab; search: string }) {
       <EmptyState
         className="py-12"
         icon={<Sparkles className="h-5 w-5 text-violet-500" />}
-        title="No drafts yet"
+        title={t.outreach.noDraftsYet}
         description="Use the composer on the right → to create a draft from a prospect's hook."
       />
     );
@@ -1739,7 +1742,7 @@ function TabEmptyState({ tab, search }: { tab: Tab; search: string }) {
       <EmptyState
         className="py-12"
         icon={<Send className="h-5 w-5 text-emerald-500" />}
-        title="Nothing sent yet"
+        title={t.outreach.nothingSentYet}
         description="Approved messages you send will show here with delivery status."
       />
     );
@@ -1752,7 +1755,7 @@ function TabEmptyState({ tab, search }: { tab: Tab; search: string }) {
           <XCircle className="h-6 w-6 text-rose-600" />
         </div>
       }
-      title="No failures"
+      title={t.outreach.noFailures}
       description="Nothing failed to send. (If you see failures, check SMTP/WAHA config.)"
     />
   );

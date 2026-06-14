@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { t } from "@/i18n/id";
+import { useT } from "@/i18n/id";
 
 export function NotFoundPage() {
+  const t = useT();
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="text-center">

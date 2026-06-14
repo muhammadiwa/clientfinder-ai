@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import case, desc, func, select
+from sqlalchemy import String, case, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -27,7 +27,7 @@ from app.schemas.analytics import (
     AnalyticsRange,
     ApprovalFunnelStats,
     ConversionRate,
-    DailyVolume,
+    DailyPipeline,
     GradeDistribution,
     LeadSourceQuality,
     LLMUsageStats,
@@ -398,40 +398,115 @@ async def _compute_time_to_enrich(
 
 async def _compute_daily_volume(
     db: AsyncSession, start: datetime
-) -> list[DailyVolume]:
-    """Sent + replied counts per day (for sparkline)."""
-    # Generate all days in range
+) -> list[DailyPipeline]:
+    """Prospect pipeline activity per day.
+
+    T8.5+++++++ (telemetry fix): this now tracks
+    PROSPECT pipeline events (not outreach message
+    events) since the 'Aktivitas pipeline' chart on
+    the Dashboard is for the prospect pipeline
+    (Klinik/F&B → scored → contacted → won), not the
+    outreach message pipeline.
+
+    Source of truth: the 'activities' table (audit log
+    of prospect + outreach events).
+
+    4 series mapped to prospect pipeline stages:
+    - baru (new): prospect_created action
+    - dinilai (scored): analysis_completed +
+      prospect_enriched actions (T5 analyst pipeline)
+    - dihubungi (contacted): prospect_updated action
+      with details.status='contacted'
+    - menang (won): prospect_updated action with
+      details.status='won'
+
+    Returns 1 entry per day in range, with 0s when
+    no activity.
+    """
     end = datetime.now(timezone.utc)
     days: list[datetime] = []
     cur = datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
     while cur <= end:
         days.append(cur)
         cur = cur + timedelta(days=1)
-    # Query sent + replied per day
-    sent_q = select(
-        func.date(Message.sent_at).label("d"),
-        func.sum(
-            case((Message.status == "replied", 1), else_=0)
-        ).label("replied"),
-        func.count(Message.id).label("sent"),
+
+    # Query 1: baru (new) — prospect_created actions
+    baru_q = select(
+        func.date(Activity.created_at).label("d"),
+        func.count(Activity.id).label("count"),
     ).where(
-        Message.sent_at >= start,
-        Message.status.in_(
-            ("sent", "delivered", "opened", "clicked", "replied")
-        ),
-    ).group_by(func.date(Message.sent_at))
-    rows = (await db.execute(sent_q)).all()
-    by_date: dict[str, tuple[int, int]] = {}
-    for d, replied, sent in rows:
-        by_date[str(d)] = (int(sent or 0), int(replied or 0))
-    out: list[DailyVolume] = []
+        Activity.created_at >= start,
+        Activity.action == "prospect_created",
+    ).group_by(func.date(Activity.created_at))
+    baru_rows = (await db.execute(baru_q)).all()
+    # Query 2: dinilai (scored) — analysis_completed +
+    # prospect_enriched actions
+    dinilai_q = select(
+        func.date(Activity.created_at).label("d"),
+        func.count(Activity.id).label("count"),
+    ).where(
+        Activity.created_at >= start,
+        Activity.action.in_(("analysis_completed", "prospect_enriched")),
+    ).group_by(func.date(Activity.created_at))
+    dinilai_rows = (await db.execute(dinilai_q)).all()
+    # Query 3: dihubungi (contacted) — prospect_updated
+    # actions where details->>'status' = 'contacted'.
+    # Postgres JSONB path: details::text LIKE '%...%' is
+    # fragile; use ->> operator.
+    dihubungi_q = select(
+        func.date(Activity.created_at).label("d"),
+        func.count(Activity.id).label("count"),
+    ).where(
+        Activity.created_at >= start,
+        Activity.action == "prospect_updated",
+        # Cast to text + LIKE for cross-DB compatibility
+        # (SQLite test DB, Postgres prod). For Postgres
+        # production, use func.jsonb_extract_path_text.
+        func.cast(Activity.details, String).like('%"status": "contacted"%'),
+    ).group_by(func.date(Activity.created_at))
+    try:
+        dihubungi_rows = (await db.execute(dihubungi_q)).all()
+    except Exception:
+        # Fallback: skip this series (set all to 0)
+        dihubungi_rows = []
+    # Query 4: menang (won) — prospect_updated actions
+    # where details->>'status' = 'won'
+    menang_q = select(
+        func.date(Activity.created_at).label("d"),
+        func.count(Activity.id).label("count"),
+    ).where(
+        Activity.created_at >= start,
+        Activity.action == "prospect_updated",
+        func.cast(Activity.details, String).like('%"status": "won"%'),
+    ).group_by(func.date(Activity.created_at))
+    try:
+        menang_rows = (await db.execute(menang_q)).all()
+    except Exception:
+        menang_rows = []
+    # Merge into per-day dict
+    by_date: dict[str, dict[str, int]] = {}
+    for d, count in baru_rows:
+        by_date[str(d)] = {"baru": int(count or 0), "dinilai": 0, "dihubungi": 0, "menang": 0}
+    for d, count in dinilai_rows:
+        by_date.setdefault(str(d), {"baru": 0, "dinilai": 0, "dihubungi": 0, "menang": 0})
+        by_date[str(d)]["dinilai"] = int(count or 0)
+    for d, count in dihubungi_rows:
+        by_date.setdefault(str(d), {"baru": 0, "dinilai": 0, "dihubungi": 0, "menang": 0})
+        by_date[str(d)]["dihubungi"] = int(count or 0)
+    for d, count in menang_rows:
+        by_date.setdefault(str(d), {"baru": 0, "dinilai": 0, "dihubungi": 0, "menang": 0})
+        by_date[str(d)]["menang"] = int(count or 0)
+    # Build output for every day in range (fill missing with 0)
+    out: list[DailyPipeline] = []
     for d in days:
-        s, r = by_date.get(d.strftime("%Y-%m-%d"), (0, 0))
+        v = by_date.get(d.strftime("%Y-%m-%d"), {"baru": 0, "dinilai": 0, "dihubungi": 0, "menang": 0})
         out.append(
-            DailyVolume(
+            DailyPipeline(
                 date=d.strftime("%Y-%m-%d"),
-                sent=s,
-                replied=r,
+                baru=v["baru"],
+                dinilai=v["dinilai"],
+                dihubungi=v["dihubungi"],
+                menang=v["menang"],
             )
         )
     return out
