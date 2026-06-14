@@ -8,7 +8,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getT } from "@/i18n/id";
+import { getT } from "@/i18n";
 import { usePendingApprovalCount } from "@/hooks/useOutreach";
 
 const navItems = [

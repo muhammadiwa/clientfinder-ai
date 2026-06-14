@@ -37,7 +37,7 @@ import {
 } from "@/api/prospects";
 import { generateHooks } from "@/services/ai/ai-analyzer";
 import { cn } from "@/lib/utils";
-import { useT } from "@/i18n/id";
+import { useT } from "@/i18n";
 
 /**
  * ProspectDetail — full analyst view (T5 Group 3).

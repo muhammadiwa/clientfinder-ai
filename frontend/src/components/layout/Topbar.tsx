@@ -28,7 +28,7 @@ import {
   MenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useT, getT } from "@/i18n/id";
+import { useT, getT } from "@/i18n";
 
 const routeLabels: Record<string, string> = {
   dashboard: getT().nav.dashboard,

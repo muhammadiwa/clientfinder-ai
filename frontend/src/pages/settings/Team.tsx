@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth";
 import { useMe } from "@/hooks/useAuth";
-import { useT } from "@/i18n/id";
+import { useT } from "@/i18n";
 
 /**
  * Settings / Team section

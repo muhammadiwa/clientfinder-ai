@@ -22,7 +22,7 @@ import { GradeDonut } from "@/components/charts/GradeDonut";
 import { useProspects } from "@/hooks/useProspects";
 import { useOutreachStats } from "@/hooks/useOutreach";
 import { useAnalyticsOverview } from "@/hooks/useAnalytics";
-import { useT, getT } from "@/i18n/id";
+import { useT, getT } from "@/i18n";
 import type { Prospect } from "@/types";
 
 // Per playbook §1: status colors

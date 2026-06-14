@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores/auth";
 import { useMe } from "@/hooks/useAuth";
-import { useT } from "@/i18n/id";
+import { useT } from "@/i18n";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

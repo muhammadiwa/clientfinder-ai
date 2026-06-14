@@ -16,7 +16,7 @@ import { FormField, Input } from "@/components/ui/input";
 import { useRegister } from "@/hooks/useAuth";
 import { isApiError } from "@/api/client";
 import { formatApiError, formatFieldError } from "@/lib/formatError";
-import { useT } from "@/i18n/id";
+import { useT } from "@/i18n";
 
 const PERKS = [
   "Penemuan prospek bertenaga AI dari Google Maps, Twitter, Threads",

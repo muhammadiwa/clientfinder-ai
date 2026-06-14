@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useT, getT } from "@/i18n/id";
+import { useT, getT } from "@/i18n";
 
 const navItems = [
   { to: "/dashboard", label: getT().nav.dashboard, icon: LayoutDashboard },
