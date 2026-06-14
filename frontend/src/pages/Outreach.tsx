@@ -27,7 +27,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Textarea } from "@/components/ui/input";
 import { useApplyOptimistic } from "@/hooks/useOptimisticMessages";
-import { useMessages } from "@/hooks/useOutreach";
+import { useMessages, useOptimisticStats } from "@/hooks/useOutreach";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
@@ -174,7 +174,23 @@ export function OutreachPage() {
     messages,
     setMessages,
     queryKey: messagesQueryKey,
+    onOptimisticRemove: (count) => {
+      // T8.5+++++++ (badge): also decrement the stats
+      // cache so the Sidebar's pending count badge
+      // auto-updates. We snapshot before, and the apply
+      // helper handles rollback on error.
+      statsHelpers.decrementPending(count);
+    },
+    onRollback: () => {
+      // T8.5+++++++ (badge): rollback the stats cache
+      // when the messages cache rolls back. Restores
+      // the previous stats value (before decrement).
+      statsHelpers.restorePending();
+    },
   });
+  // T8.5+++++++ (badge): helper to optimistically update
+  // the stats cache (separate from the messages cache).
+  const statsHelpers = useOptimisticStats();
   // T8.5+++++++ useQuery refactor: messages fetch
   // goes through TanStack Query now (cached, refetch,
   // queryKey-based). We still keep a local `messages`

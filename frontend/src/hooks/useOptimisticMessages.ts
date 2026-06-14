@@ -5,26 +5,25 @@
  * T8.5+++++++ (cache-level): also updates the TanStack Query
  * cache via setQueryData, so other components viewing the
  * same queryKey see the update.
+ * T8.5+++++++ (race fix): cancels in-flight refetches before
+ * setQueryData so they don't overwrite the optimistic update.
+ * T8.5+++++++ (badge): also decrements the stats cache so
+ * the Sidebar's 'pending count' badge auto-updates.
  *
  * Pattern (local + cache):
  *   1. User clicks "Approve" on a message
  *   2. We IMMEDIATELY:
- *      a. Snapshot the current query cache
- *      b. Remove the message from the cache (via setQueryData)
- *      c. Remove from local state (so the optimistic-UI
+ *      a. Cancel any in-flight refetch on this queryKey
+ *      b. Snapshot the current query cache
+ *      c. Remove the message from the cache (via setQueryData)
+ *      d. Decrement the pending count in the stats cache
+ *      e. Remove from local state (so the optimistic-UI
  *         helper still works for any UI bound to local state)
  *   3. We await the API call
- *   4. On success: cache is already correct; the next
+ *   4. On success: caches are already correct; the next
  *      refetch will confirm
- *   5. On failure: we RESTORE both the cache and local
- *      state (rollback) and show the error toast
- *
- * Why this matters: with the previous local-only approach,
- * only THIS component saw the optimistic update. With
- * cache-level updates, ANY component bound to the same
- * queryKey (e.g. a future "pending count" badge in the
- * sidebar) sees the update immediately. Single source
- * of truth = single place to update.
+ *   5. On failure: we RESTORE the cache, the stats, AND
+ *      local state (rollback) and show the error toast
  */
 import { useCallback } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
@@ -47,13 +46,30 @@ import type { Message } from "@/types";
  *
  * On success: leaves both state + cache updated.
  * On throw: rolls back BOTH, re-throws for caller to toast.
+ *
+ * T8.5+++++++ (race fix): also calls cancelQueries before
+ * setQueryData so any in-flight refetch doesn't overwrite
+ * the optimistic update with stale data.
+ *
+ * T8.5+++++++ (badge): also decrements the stats cache
+ * ('outreach', 'stats') — specifically the pending_approval
+ * count. This way the Sidebar's badge auto-updates without
+ * needing a refetch.
  */
 export function useApplyOptimistic(opts: {
   messages: Message[];
   setMessages: (next: Message[]) => void;
   queryKey: QueryKey;
+  /** Optional: called when each message is removed optimistically
+   *  (used by Outreach to also decrement the stats cache
+   *  for the Sidebar badge). */
+  onOptimisticRemove?: (removedCount: number) => void;
+  /** Optional: called on error rollback. Pairs with
+   *  onOptimisticRemove so the caller can revert any
+   *  external state mutations (e.g. stats cache). */
+  onRollback?: () => void;
 }) {
-  const { messages, setMessages, queryKey } = opts;
+  const { messages, setMessages, queryKey, onOptimisticRemove, onRollback } = opts;
   const queryClient = useQueryClient();
 
   return useCallback(
@@ -77,6 +93,14 @@ export function useApplyOptimistic(opts: {
       const localSnapshot = messages;
       const cacheSnapshot = queryClient.getQueryData<{ items: Message[]; total: number }>(queryKey);
 
+      // T8.5+++++++ (race fix): cancel any in-flight refetch
+      // on this queryKey before we mutate. Otherwise the
+      // refetch could fire AFTER our setQueryData and
+      // overwrite the optimistic update with stale server
+      // data. The refetch is abandoned and will be re-scheduled
+      // on the next invalidation.
+      await queryClient.cancelQueries({ queryKey });
+
       // 1) Optimistic local update
       setMessages(messages.filter((m) => !idSet.has(m.id)));
 
@@ -93,6 +117,10 @@ export function useApplyOptimistic(opts: {
         );
       }
 
+      // T8.5+++++++ (badge): also update the stats cache
+      // so the Sidebar's pending count badge auto-updates.
+      onOptimisticRemove?.(ids.length);
+
       try {
         await mutation();
       } catch {
@@ -101,10 +129,12 @@ export function useApplyOptimistic(opts: {
         if (cacheSnapshot !== undefined) {
           queryClient.setQueryData(queryKey, cacheSnapshot);
         }
+        // Pair the stats decrement with a stats restore.
+        onRollback?.();
         throw new Error("mutation failed");
       }
     },
-    [messages, setMessages, queryClient, queryKey],
+    [messages, setMessages, queryClient, queryKey, onOptimisticRemove, onRollback],
   );
 }
 
@@ -133,3 +163,4 @@ export function useOptimisticRemove() {
     [queryClient],
   );
 }
+
