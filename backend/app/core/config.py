@@ -125,6 +125,15 @@ class Settings(BaseSettings):
     scraper_max_concurrent: int = 2
     scraper_proxy_enabled: bool = False
 
+    # Sprint 1 / Phase 1.1 — Google Scout pre-filter + kill switch
+    # Per the 2026-06-14 audit, ~67% of Google Search results are noise
+    # (gibberish spam, listicles, marketplaces). The pre-filter cuts noise
+    # without an HTTP fetch. The kill switch lets ops disable Google
+    # entirely if the result quality ever degrades again.
+    scout_google_enabled: bool = False
+    scout_google_prefilter_enabled: bool = True
+    scout_google_max_results_per_query: int = 50  # cap before prefilter
+
     # Scout enrichment (T8.6) — homepage fetch for phone/email/address/socials
     scout_enrichment_enabled: bool = True
     scout_enrichment_page_timeout_s: int = 12
