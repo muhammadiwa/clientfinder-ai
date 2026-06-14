@@ -12,7 +12,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import * as analyticsApi from "@/api/analytics";
-import type { AnalyticsOverview } from "@/api/analytics";
+import type { AnalyticsOverview, TierDistribution } from "@/api/analytics";
 
 /**
  * useAnalyticsOverview — fetches the full analytics
@@ -30,6 +30,23 @@ export function useAnalyticsOverview(
     queryKey: ["analytics", "overview", days] as const,
     queryFn: () => analyticsApi.getAnalyticsOverview(days),
     staleTime: 60_000, // 1min — analytics is "fresh" for 1min
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * useTierDistribution — Sprint 3B carryover.
+ *
+ * Fetches the prospect tier distribution (SMB / Mid / Enterprise /
+ * Unknown / Unclassified) for the Dashboard's TierDonut widget.
+ */
+export function useTierDistribution(
+  days = 30,
+): UseQueryResult<TierDistribution, Error> {
+  return useQuery({
+    queryKey: ["analytics", "tier-distribution", days] as const,
+    queryFn: () => analyticsApi.getTierDistribution(days),
+    staleTime: 60_000,
     refetchOnWindowFocus: true,
   });
 }

@@ -19,8 +19,9 @@ import { StatusPill, GradePill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ActivityChart } from "@/components/charts/ActivityChart";
 import { GradeDonut } from "@/components/charts/GradeDonut";
+import { TierDonut, TIER_DONUT_COLORS } from "@/components/charts/TierDonut";
 import { useProspects } from "@/hooks/useProspects";
-import { useAnalyticsOverview } from "@/hooks/useAnalytics";
+import { useAnalyticsOverview, useTierDistribution } from "@/hooks/useAnalytics";
 import { useT, getT } from "@/i18n";
 import type { Prospect } from "@/types";
 
@@ -87,6 +88,7 @@ export function DashboardPage() {
   // volume from /analytics/overview. Powers the
   // "Aktivitas pipeline" chart (replaces synthetic).
   const analyticsQuery = useAnalyticsOverview(30);
+  const tierQuery = useTierDistribution(30);
   // Future: useAnalyticsOverview(30) for the daily-volume
   // chart (replaces synthetic sin-based data)
 
@@ -138,6 +140,44 @@ export function DashboardPage() {
       .sort((a, b) => (b.score_total ?? 0) - (a.score_total ?? 0))
       .slice(0, 5);
   }, [stats.prospects]);
+
+  // Sprint 3B carryover: tier distribution for the TierDonut widget
+  const tierData = useMemo(() => {
+    const d = tierQuery.data;
+    if (!d) return [];
+    return [
+      {
+        name: "smb",
+        label: "SMB",
+        value: d.smb,
+        color: TIER_DONUT_COLORS.smb,
+      },
+      {
+        name: "mid",
+        label: "Mid",
+        value: d.mid,
+        color: TIER_DONUT_COLORS.mid,
+      },
+      {
+        name: "enterprise",
+        label: "Enterprise",
+        value: d.enterprise,
+        color: TIER_DONUT_COLORS.enterprise,
+      },
+      {
+        name: "unknown",
+        label: "Unknown",
+        value: d.unknown,
+        color: TIER_DONUT_COLORS.unknown,
+      },
+      {
+        name: "unclassified",
+        label: "Unclassified",
+        value: d.unclassified,
+        color: TIER_DONUT_COLORS.unclassified,
+      },
+    ];
+  }, [tierQuery.data]);
 
   const wonRate =
     stats.total > 0 ? Math.round((stats.won / stats.total) * 100) : 0;
@@ -288,7 +328,7 @@ export function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Lead quality donut + Conversion cards row */}
+      {/* Lead quality donut + Tier donut + Conversion cards row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
@@ -304,7 +344,27 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Sprint 3B carryover: tier distribution */}
+        <Card data-testid="tier-distribution-card">
+          <CardHeader>
+            <CardTitle className="text-lg">{t.dashboard.tierDistribution}</CardTitle>
+            <CardDescription>{t.dashboard.tierDistributionDesc}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {tierQuery.isLoading ? (
+              <Skeleton className="h-48 w-full" />
+            ) : tierQuery.isError ? (
+              <p className="text-xs text-red-500">Failed to load tier distribution</p>
+            ) : (
+              <TierDonut
+                data={tierData}
+                centerSubLabel={t.dashboard.tier}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="lg:col-span-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <ConversionCard
             title={t.dashboard.pipelineActivation}
             value={activatedRate}
