@@ -31,6 +31,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
 import { ScoreBreakdownChart } from "@/components/charts/ScoreBreakdown";
 import { SignalList } from "@/components/SignalList";
+import { EnrollmentPanel } from "@/components/EnrollmentPanel";
 import {
   enrichProspect,
   getProspectDetail,
@@ -688,6 +689,9 @@ export function ProspectDetailPage() {
           onReanalyze={handleReanalyze}
           reanalyzing={analyzing}
         />
+
+        {/* Sprint 3A: sequence enrollments + controls */}
+        <EnrollmentPanel prospectId={prospect.id} />
       </div>
 
       {/* AI-generated hooks */}

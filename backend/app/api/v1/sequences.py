@@ -83,135 +83,6 @@ async def create_sequence(
     return _to_out(seq)
 
 
-@router.get("/{sequence_id}", response_model=SequenceOut)
-async def get_sequence(
-    sequence_id: UUID,
-    current_user: CurrentUser,
-    db: DB,
-) -> SequenceOut:
-    seq = (
-        await db.execute(select(Sequence).where(Sequence.id == sequence_id))
-    ).scalar_one_or_none()
-    if not seq:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sequence {sequence_id} not found",
-        )
-    return _to_out(seq)
-
-
-@router.patch("/{sequence_id}", response_model=SequenceOut)
-async def update_sequence(
-    sequence_id: UUID,
-    payload: SequenceUpdate,
-    current_user: CurrentUser,
-    db: DB,
-) -> SequenceOut:
-    seq = (
-        await db.execute(select(Sequence).where(Sequence.id == sequence_id))
-    ).scalar_one_or_none()
-    if not seq:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sequence {sequence_id} not found",
-        )
-    update = payload.model_dump(exclude_unset=True)
-    if "steps" in update and update["steps"]:
-        update["steps"] = [s.model_dump() if hasattr(s, "model_dump") else s for s in update["steps"]]
-    for k, v in update.items():
-        setattr(seq, k, v)
-    await db.commit()
-    await db.refresh(seq)
-    return _to_out(seq)
-
-
-@router.delete("/{sequence_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_sequence(
-    sequence_id: UUID,
-    current_user: CurrentUser,
-    db: DB,
-) -> None:
-    seq = (
-        await db.execute(select(Sequence).where(Sequence.id == sequence_id))
-    ).scalar_one_or_none()
-    if not seq:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sequence {sequence_id} not found",
-        )
-    await db.delete(seq)
-    await db.commit()
-
-
-@router.post("/enroll", status_code=status.HTTP_201_CREATED)
-async def enroll_prospect(
-    payload: SequenceEnrollRequest,
-    current_user: CurrentUser,
-    db: DB,
-) -> dict:
-    """Enroll a prospect in a sequence.
-
-    Creates a SequenceEnrollment starting at step 0.
-    The T6.2 celery-beat task picks up enrollments with
-    next_action_at <= now() and sends the current step.
-    """
-    # Validate prospect + sequence exist
-    prospect = (
-        await db.execute(
-            select(Prospect).where(Prospect.id == payload.prospect_id)
-        )
-    ).scalar_one_or_none()
-    if not prospect:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Prospect {payload.prospect_id} not found",
-        )
-    seq = (
-        await db.execute(
-            select(Sequence).where(Sequence.id == payload.sequence_id)
-        )
-    ).scalar_one_or_none()
-    if not seq:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sequence {payload.sequence_id} not found",
-        )
-
-    # Create enrollment at step 0
-    from datetime import datetime, timedelta, timezone
-
-    steps = seq.steps or []
-    first_step = steps[0] if steps else None
-    next_action_at = datetime.now(timezone.utc) + timedelta(
-        days=first_step.get("day_offset", 0) if first_step else 0
-    )
-
-    enrollment = SequenceEnrollment(
-        prospect_id=payload.prospect_id,
-        sequence_id=payload.sequence_id,
-        current_step=0,
-        status="active",
-        next_action_at=next_action_at,
-    )
-    db.add(enrollment)
-    db.add(
-        Activity(
-            prospect_id=payload.prospect_id,
-            user_id=current_user.id,
-            action="enrolled_in_sequence",
-            details={
-                "sequence_id": str(payload.sequence_id),
-                "sequence_name": seq.name,
-            },
-        )
-    )
-    await db.commit()
-    await db.refresh(enrollment)
-    return {
-        "ok": True,
-        "enrollment_id": str(enrollment.id),
-        "next_action_at": next_action_at.isoformat(),
-    }
 
 
 # --- Enrollment control (T6.2 / Sprint 3A) ---
@@ -312,6 +183,7 @@ async def stop_enrollment(
         return {"ok": False, "error": f"Already {enr.status}"}
     enr.status = "stopped"
     enr.stopped_reason = reason
+    from datetime import datetime, timezone
     enr.completed_at = datetime.now(timezone.utc)
     db.add(
         Activity(
@@ -331,9 +203,10 @@ async def list_enrollments(
     db: DB,
     status_filter: str | None = None,
     sequence_id: UUID | None = None,
+    prospect_id: UUID | None = None,
     limit: int = 50,
 ) -> dict:
-    """List enrollments, optionally filtered by status / sequence."""
+    """List enrollments, optionally filtered by status / sequence / prospect."""
     q = select(SequenceEnrollment).order_by(
         SequenceEnrollment.started_at.desc()
     )
@@ -341,6 +214,8 @@ async def list_enrollments(
         q = q.where(SequenceEnrollment.status == status_filter)
     if sequence_id:
         q = q.where(SequenceEnrollment.sequence_id == sequence_id)
+    if prospect_id:
+        q = q.where(SequenceEnrollment.prospect_id == prospect_id)
     q = q.limit(min(limit, 200))
     items = (await db.execute(q)).scalars().all()
     return {
@@ -380,4 +255,137 @@ async def trigger_drip_runner(
         "ok": True,
         "task_id": result.id,
         "status": "queued",
+    }
+
+
+@router.get("/{sequence_id}", response_model=SequenceOut)
+async def get_sequence(
+    sequence_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+) -> SequenceOut:
+    seq = (
+        await db.execute(select(Sequence).where(Sequence.id == sequence_id))
+    ).scalar_one_or_none()
+    if not seq:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sequence {sequence_id} not found",
+        )
+    return _to_out(seq)
+
+
+@router.patch("/{sequence_id}", response_model=SequenceOut)
+async def update_sequence(
+    sequence_id: UUID,
+    payload: SequenceUpdate,
+    current_user: CurrentUser,
+    db: DB,
+) -> SequenceOut:
+    seq = (
+        await db.execute(select(Sequence).where(Sequence.id == sequence_id))
+    ).scalar_one_or_none()
+    if not seq:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sequence {sequence_id} not found",
+        )
+    update = payload.model_dump(exclude_unset=True)
+    if "steps" in update and update["steps"]:
+        update["steps"] = [s.model_dump() if hasattr(s, "model_dump") else s for s in update["steps"]]
+    for k, v in update.items():
+        setattr(seq, k, v)
+    await db.commit()
+    await db.refresh(seq)
+    return _to_out(seq)
+
+
+@router.delete("/{sequence_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sequence(
+    sequence_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+) -> None:
+    seq = (
+        await db.execute(select(Sequence).where(Sequence.id == sequence_id))
+    ).scalar_one_or_none()
+    if not seq:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sequence {sequence_id} not found",
+        )
+    await db.delete(seq)
+    await db.commit()
+
+
+@router.post("/enroll", status_code=status.HTTP_201_CREATED)
+async def enroll_prospect(
+    payload: SequenceEnrollRequest,
+    current_user: CurrentUser,
+    db: DB,
+) -> dict:
+    """Enroll a prospect in a sequence.
+
+    Creates a SequenceEnrollment starting at step 0.
+    The T6.2 celery-beat task picks up enrollments with
+    next_action_at <= now() and sends the current step.
+    """
+    # Validate prospect + sequence exist
+    prospect = (
+        await db.execute(
+            select(Prospect).where(Prospect.id == payload.prospect_id)
+        )
+    ).scalar_one_or_none()
+    if not prospect:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Prospect {payload.prospect_id} not found",
+        )
+    seq = (
+        await db.execute(
+            select(Sequence).where(Sequence.id == payload.sequence_id)
+        )
+    ).scalar_one_or_none()
+    if not seq:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sequence {payload.sequence_id} not found",
+        )
+
+    # Create enrollment at step 0
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    steps = seq.steps or []
+    first_step = steps[0] if steps else None
+    next_action_at = now + timedelta(
+        days=first_step.get("day_offset", 0) if first_step else 0
+    )
+
+    enrollment = SequenceEnrollment(
+        prospect_id=payload.prospect_id,
+        sequence_id=payload.sequence_id,
+        current_step=0,
+        status="active",
+        next_action_at=next_action_at,
+        started_at=now,
+    )
+    db.add(enrollment)
+    db.add(
+        Activity(
+            prospect_id=payload.prospect_id,
+            user_id=current_user.id,
+            action="enrolled_in_sequence",
+            details={
+                "sequence_id": str(payload.sequence_id),
+                "sequence_name": seq.name,
+            },
+        )
+    )
+    await db.commit()
+    await db.refresh(enrollment)
+    return {
+        "ok": True,
+        "enrollment_id": str(enrollment.id),
+        "next_action_at": next_action_at.isoformat(),
     }
