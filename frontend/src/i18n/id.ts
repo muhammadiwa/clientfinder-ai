@@ -315,6 +315,16 @@ const STRINGS = {
       noAudit: "Belum ada audit teknologi",
       noAuditDesc: "Jalankan analis untuk sidik jari situs web",
     },
+    // Sprint 1 (T5 v3) / brief: 4 extra business-context fields
+    ownerName: "Pemilik",
+    ownerNamePlaceholder: "cth: Budi Santoso",
+    employeeCount: "Jumlah karyawan",
+    employeesUnit: "orang",
+    revenueEstimate: "Estimasi revenue",
+    revenuePlaceholder: "cth: Rp 50jt/bulan",
+    closingProbability: "Peluang closing",
+    closingPercent: "%",
+    ownerUnknown: "Belum diketahui",
   },
 
   // Outreach

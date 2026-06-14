@@ -40,6 +40,17 @@ class Prospect(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     social_links: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Sprint 1 (T5 v3) / brief: extra business-context fields
+    owner_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # e.g., "Budi Santoso, owner" or "Sari W., Manager Operasional"
+    employee_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # exact headcount when known; size_estimate stays as the categorical bucket
+    revenue_estimate: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # free-text like "Rp 50jt/bulan" or "USD 10k/mo" (manual input or inferred)
+    closing_probability: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 0-100, separate from lead_score (which is a quality score);
+    # this is the user's own forecast of likely-to-close, editable
+
     # Source tracking
     source: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     # google, maps, twitter, threads, manual, import

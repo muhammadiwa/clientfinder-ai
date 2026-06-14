@@ -40,6 +40,10 @@ export interface ProspectDetailResponse {
     budget_indicator: number;
     solution_fit: number;
     timing_urgency: number;
+    // Sprint 1 (T5 v3) / brief: 3 new factors
+    contact_availability: number;
+    personalization_quality: number;
+    risk_penalty: number;
     total_score: number;
     grade: string;
     reasoning: string | null;

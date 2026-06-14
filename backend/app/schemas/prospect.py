@@ -19,6 +19,11 @@ class ProspectBase(BaseModel):
     email: EmailStr | None = None
     social_links: dict[str, Any] = Field(default_factory=dict)
     description: str | None = None
+    # Sprint 1 (T5 v3) / brief
+    owner_name: str | None = Field(None, max_length=255)
+    employee_count: int | None = Field(None, ge=0)
+    revenue_estimate: str | None = Field(None, max_length=100)
+    closing_probability: int | None = Field(None, ge=0, le=100)
 
 
 class ProspectCreate(ProspectBase):
@@ -44,6 +49,11 @@ class ProspectUpdate(BaseModel):
     status: str | None = None
     quality_grade: str | None = None
     score_total: int | None = None
+    # Sprint 1 (T5 v3) / brief
+    owner_name: str | None = Field(None, max_length=255)
+    employee_count: int | None = Field(None, ge=0)
+    revenue_estimate: str | None = Field(None, max_length=100)
+    closing_probability: int | None = Field(None, ge=0, le=100)
 
 
 class ProspectOut(ProspectBase):

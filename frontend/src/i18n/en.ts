@@ -312,6 +312,16 @@ const STRINGS = {
       noAudit: "No tech audit yet",
       noAuditDesc: "Run analyst to fingerprint the website",
     },
+    // Sprint 1 (T5 v3) / brief: 4 extra business-context fields
+    ownerName: "Owner",
+    ownerNamePlaceholder: "e.g. Budi Santoso",
+    employeeCount: "Employee count",
+    employeesUnit: "people",
+    revenueEstimate: "Revenue estimate",
+    revenuePlaceholder: "e.g. IDR 50M/mo",
+    closingProbability: "Closing probability",
+    closingPercent: "%",
+    ownerUnknown: "Unknown",
   },
 
   // Outreach
