@@ -25,7 +25,7 @@ import { toast } from "react-hot-toast";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FormField, Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -39,6 +39,7 @@ import {
 } from "@/api/scouting";
 import { useProspects } from "@/hooks/useProspects";
 import { t } from "@/i18n/id";
+import { formatApiError, formatFieldError } from "@/lib/formatError";
 import {
   analyzeProspect,
   isLLMAvailable,
@@ -129,6 +130,10 @@ export function ScoutPage() {
   const [location, setLocation] = useState("");
   const [maxResults, setMaxResults] = useState(20);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{
+    keywords?: string;
+    location?: string;
+  }>({});
 
   // Data
   const [jobs, setJobs] = useState<ScrapingJob[]>([]);
@@ -226,8 +231,19 @@ export function ScoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Client-side validation (T8.5++++++)
+    setFieldErrors({});
+    const errs: typeof fieldErrors = {};
     if (!keywords.trim()) {
-      toast.error(t.scout.keywordsRequired);
+      errs.keywords = formatFieldError("keywords", "required");
+    } else if (keywords.trim().length < 2) {
+      errs.keywords = formatFieldError("keywords", "tooShort", { min: 2 });
+    }
+    if (location && location.length > 100) {
+      errs.location = formatFieldError("location", "tooLong", { max: 100 });
+    }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
     const sourceOpt = SOURCES.find((s) => s.id === source);
@@ -251,9 +267,7 @@ export function ScoutPage() {
       setLocation("");
       setReloadKey((k) => k + 1);
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : t.scout.failedToCreate,
-      );
+      toast.error(formatApiError(e));
     } finally {
       setSubmitting(false);
     }
@@ -404,12 +418,17 @@ export function ScoutPage() {
               </div>
 
               {/* Keywords */}
-              <div className="space-y-2">
-                <label htmlFor="keywords" className="text-sm font-medium">
-                  Keywords
-                </label>
+              <FormField
+                label="Kata kunci"
+                required
+                hint={
+                  source === "maps"
+                    ? "Contoh: restoran, kafe, klinik gigi…"
+                    : "Contoh: klinik gigi jakarta, website UMKM…"
+                }
+                error={fieldErrors.keywords}
+              >
                 <Input
-                  id="keywords"
                   placeholder={
                     source === "maps"
                       ? "restoran, kafe, klinik gigi…"
@@ -417,33 +436,29 @@ export function ScoutPage() {
                   }
                   value={keywords}
                   onChange={(e) => setKeywords(e.target.value)}
-                  required
                   disabled={submitting}
                   className="h-10"
                 />
-              </div>
+              </FormField>
 
               {/* Location */}
-              <div className="space-y-2">
-                <label htmlFor="location" className="text-sm font-medium">
-                  Location{" "}
-                  <span className="text-xs text-muted-foreground font-normal">
-                    (optional)
-                  </span>
-                </label>
+              <FormField
+                label="Lokasi"
+                hint="Opsional — kosongkan untuk pencarian global"
+                error={fieldErrors.location}
+              >
                 <Input
-                  id="location"
                   placeholder={t.scout.locationPlaceholder}
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   disabled={submitting}
                   className="h-10"
                 />
-              </div>
+              </FormField>
 
               {/* P2-A4: segmented control instead of slider */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Max results</label>
+                <label className="text-sm font-medium">Jumlah hasil maksimal</label>
                 <div className="flex flex-wrap gap-2">
                   {MAX_RESULTS_OPTIONS.map((n) => (
                     <button
@@ -463,7 +478,7 @@ export function ScoutPage() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Estimated ~{Math.ceil(maxResults / 5)}s search time
+                  Estimasi ~{Math.ceil(maxResults / 5)} detik waktu pencarian
                 </p>
               </div>
 
