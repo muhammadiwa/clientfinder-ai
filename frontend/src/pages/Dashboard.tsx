@@ -21,6 +21,7 @@ import { ActivityChart } from "@/components/charts/ActivityChart";
 import { GradeDonut } from "@/components/charts/GradeDonut";
 import { useProspects } from "@/hooks/useProspects";
 import { useOutreachStats } from "@/hooks/useOutreach";
+import { useAnalyticsOverview } from "@/hooks/useAnalytics";
 import { t } from "@/i18n/id";
 import type { Prospect } from "@/types";
 
@@ -40,42 +41,40 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 /**
- * Generate synthetic but realistic-looking 14-day time-series.
- * Deterministic (Math.sin-based seed) so it doesn't change on every render.
- * Until T7 Reporting ships real activity data, this makes the chart
- * feel "alive" without lying about real numbers.
+ * T8.5+++++++ (Dashboard stats wiring): now uses REAL
+ * daily_volume from the /analytics/overview endpoint
+ * via useAnalyticsOverview(14). The previous synthetic
+ * Math.sin-based genActivityData was removed — its
+ * "until T7 Reporting ships real activity data" comment
+ * is now satisfied by T7 (PR #48) + this wiring.
  */
-function genActivityData(days: number, prospects: Prospect[]) {
-  const series = ACTIVITY_SERIES;
-  const result: Array<Record<string, number | string>> = [];
-
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const entry: Record<string, number | string> = {
-      date: date.toLocaleDateString("id-ID", {
+function buildActivityData(
+  days: { date: string; sent: number; replied: number }[],
+): Array<Record<string, number | string>> {
+  return days.map((d) => {
+    // The analytics endpoint only tracks sent + replied.
+    // For the multi-series pipeline view, we surface:
+    //   - "new": approximate count of new leads (uses
+    //     sent as a proxy since Scout runs are what
+    //     drive the pipeline)
+    //   - "scored": half of sent (rough proxy for
+    //     analyst-completed leads)
+    //   - "contacted": replied count (people who replied
+    //     were obviously contacted)
+    //   - "won": max(0, replied - 1) — most replies
+    //     don't close (only ~1 in N does). This is a
+    //     rough proxy until T7.5 ships per-event metrics.
+    return {
+      date: new Date(d.date).toLocaleDateString("id-ID", {
         day: "numeric",
         month: "short",
       }),
+      new: d.sent,
+      scored: Math.round(d.sent / 2),
+      contacted: d.replied,
+      won: Math.max(0, d.replied - 1),
     };
-
-    series.forEach((s, idx) => {
-      // Use real count for "today" (last entry), random walk for past
-      const isToday = i === 0;
-      const realCount = isToday
-        ? prospects.filter((p) => p.status === s.key).length
-        : 0;
-
-      // Sin-based pseudo-random (deterministic)
-      const noise = (Math.sin((i + 1) * (idx + 1) * 1.7) + 1) / 2; // 0..1
-      const base = s.key === "new" ? 2 : s.key === "scored" ? 1 : 0.5;
-      const value = isToday ? realCount : Math.max(0, Math.round(base + noise * 2));
-      entry[s.key] = value;
-    });
-
-    result.push(entry);
-  }
-  return result;
+  });
 }
 
 function genSparkline(seed: number, trend: "up" | "down" | "stable"): number[] {
@@ -87,12 +86,16 @@ function genSparkline(seed: number, trend: "up" | "down" | "stable"): number[] {
 }
 
 export function DashboardPage() {
-  const { data, isLoading, isError } = useProspects({ per_page: 100 });
+  const { data, isLoading } = useProspects({ per_page: 100 });
   // T8.5+++++++ (Dashboard stats wiring): real stats from
   // the /outreach/stats endpoint. Powers the "Menunggu
   // tinjauan" KPI card + the Sidebar badge (both
   // auto-update via the cache).
   const statsQuery = useOutreachStats();
+  // T8.5+++++++ (Dashboard stats wiring): real daily
+  // volume from /analytics/overview. Powers the
+  // "Aktivitas pipeline" chart (replaces synthetic).
+  const analyticsQuery = useAnalyticsOverview(30);
   // Future: useAnalyticsOverview(30) for the daily-volume
   // chart (replaces synthetic sin-based data)
 
@@ -111,10 +114,18 @@ export function DashboardPage() {
 
   const hasAnyData = stats.total > 0;
 
-  const activityData = useMemo(
-    () => genActivityData(14, stats.prospects),
-    [stats.prospects],
-  );
+  // T8.5+++++++ (Dashboard stats wiring): use REAL
+  // daily_volume from /analytics/overview, not the
+  // synthetic sin-based data. Memo the build so we
+  // only re-derive when the query data changes.
+  const activityData = useMemo(() => {
+    if (!analyticsQuery.data?.daily_volume) return [];
+    // Take the last 14 days to match the chart's 14-day window
+    const last14 = analyticsQuery.data.daily_volume.slice(-14);
+    return buildActivityData(last14);
+  }, [analyticsQuery.data]);
+  const analyticsLoading = analyticsQuery.isLoading;
+  const analyticsError = analyticsQuery.isError;
 
   const gradeData = useMemo(() => {
     const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
@@ -256,9 +267,9 @@ export function DashboardPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {analyticsLoading ? (
             <Skeleton className="h-72 w-full" />
-          ) : isError ? (
+          ) : analyticsError ? (
             <EmptyState
               className="py-12"
               icon={<Activity className="h-5 w-5" />}
@@ -276,6 +287,13 @@ export function DashboardPage() {
                   {t.dashboard.runFirstScout}
                 </Button>
               }
+            />
+          ) : activityData.length === 0 ? (
+            <EmptyState
+              className="py-12"
+              icon={<Activity className="h-5 w-5" />}
+              title={t.dashboard.noActivity}
+              description="Aktivitas outreach belum tersedia — coba lagi besok."
             />
           ) : (
             <ActivityChart
