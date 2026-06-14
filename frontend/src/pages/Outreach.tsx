@@ -26,6 +26,7 @@ import { toast } from "react-hot-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Textarea } from "@/components/ui/input";
+import { useApplyOptimistic } from "@/hooks/useOptimisticMessages";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
@@ -155,6 +156,10 @@ export function OutreachPage() {
   // Tab + list state
   const [tab, setTab] = useState<Tab>("pending_approval");
   const [messages, setMessages] = useState<Message[]>([]);
+  // T8.5+++++++ Group 2: optimistic UI helper for bulk
+  // actions. Removes the given ids from the local
+  // messages state immediately, reverts on error.
+  const applyOptimistic = useApplyOptimistic(messages, setMessages);
   const [stats, setStats] = useState<OutreachStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
@@ -423,19 +428,37 @@ export function OutreachPage() {
 
   const bulkApprove = async () => {
     if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
     setBulkBusy(true);
-    let ok = 0;
-    for (const id of Array.from(selectedIds)) {
-      try {
-        await approveMessage(id, { approve: true });
-        ok++;
-      } catch {
-        // ignore individual failures
+    // T8.5+++++++ Group 2: optimistic UI — remove from
+    // pending tab immediately. Revert on full failure.
+    let okCount = 0;
+    let allFailed = false;
+    await applyOptimistic(ids, async () => {
+      let succeeded = 0;
+      for (const id of ids) {
+        try {
+          await approveMessage(id, { approve: true });
+          succeeded++;
+        } catch {
+          // Per-message failures don't roll back the
+          // optimistic update — that one succeeded.
+        }
       }
-    }
-    toast.success(`Approved ${ok}/${selectedIds.size}`);
+      okCount = succeeded;
+      if (succeeded === 0) {
+        allFailed = true;
+        throw new Error("All approvals failed");
+      }
+    });
+    toast.success(
+      allFailed
+        ? t.outreach.bulkApproveAllFailed
+        : t.outreach.bulkApprovedToast
+            .replace("{ok}", String(okCount))
+            .replace("{total}", String(ids.length)),
+    );
     clearSelection();
-    reload();
     setBulkBusy(false);
   };
 
