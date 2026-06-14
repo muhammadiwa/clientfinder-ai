@@ -65,6 +65,37 @@ const STRINGS = {
     signedIn: "Berhasil masuk",
     noAccount: "Belum punya akun?",
     haveAccount: "Sudah punya akun?",
+    welcomeBack: "Selamat datang kembali",
+    accountCreated: "Akun berhasil dibuat. Silakan masuk.",
+    couldNotCreate: "Tidak dapat membuat akun",
+    passwordTooShort: "Kata sandi harus minimal 8 karakter",
+    networkError: "Kesalahan jaringan. Silakan coba lagi.",
+    signInFailed: "Gagal masuk",
+    signUpFailed: "Gagal mendaftar",
+  },
+
+  // Form errors (shared across pages)
+  formErrors: {
+    required: "{field} wajib diisi",
+    emailInvalid: "Format email tidak valid",
+    passwordTooShort: "Kata sandi minimal 8 karakter",
+    passwordMismatch: "Kata sandi tidak cocok",
+    minLength: "{field} minimal {min} karakter",
+    maxLength: "{field} maksimal {max} karakter",
+    networkError: "Kesalahan jaringan. Coba lagi.",
+    serverError: "Terjadi kesalahan pada server. Coba lagi nanti.",
+    rateLimited: "Terlalu banyak percobaan. Coba lagi dalam beberapa menit.",
+    notFound: "Tidak ditemukan",
+    unauthorized: "Sesi berakhir. Silakan masuk lagi.",
+    forbidden: "Anda tidak punya akses untuk aksi ini.",
+    conflict: "Data sudah ada",
+    validationFailed: "Data tidak valid",
+    unknown: "Terjadi kesalahan yang tidak diketahui",
+    // Field-level
+    fieldRequired: "wajib diisi",
+    fieldTooShort: "terlalu pendek (min {min} karakter)",
+    fieldTooLong: "terlalu panjang (max {max} karakter)",
+    fieldInvalid: "format tidak valid",
   },
 
   // Dashboard

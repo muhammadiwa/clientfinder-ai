@@ -15,6 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useLogin } from "@/hooks/useAuth";
 import { isApiError } from "@/api/client";
+import { formatApiError } from "@/lib/formatError";
+import { t } from "@/i18n/id";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -30,16 +32,13 @@ export function LoginPage() {
     e.preventDefault();
     try {
       await login.mutateAsync({ email, password });
-      toast.success("Welcome back!");
+      toast.success(t.auth.welcomeBack);
       navigate(from, { replace: true });
     } catch (error) {
       if (isApiError(error)) {
-        const detail = error.response?.data?.detail;
-        const message =
-          typeof detail === "string" ? detail : "Invalid email or password";
-        toast.error(message);
+        toast.error(formatApiError(error));
       } else {
-        toast.error("Network error. Please try again.");
+        toast.error(t.auth.networkError);
       }
     }
   };

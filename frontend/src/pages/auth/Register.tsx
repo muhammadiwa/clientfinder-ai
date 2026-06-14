@@ -15,11 +15,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { useRegister } from "@/hooks/useAuth";
 import { isApiError } from "@/api/client";
+import { formatApiError } from "@/lib/formatError";
+import { t } from "@/i18n/id";
 
 const PERKS = [
-  "AI-powered prospect discovery from Google Maps, Twitter, Threads",
-  "Automatic lead scoring with pain-point analysis",
-  "Personalized outreach with human-in-the-loop approval",
+  "Penemuan prospek bertenaga AI dari Google Maps, Twitter, Threads",
+  "Penilaian prospek otomatis dengan analisis masalah",
+  "Outreach yang dipersonalisasi dengan persetujuan manusia",
 ];
 
 export function RegisterPage() {
@@ -33,21 +35,18 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error(t.auth.passwordTooShort);
       return;
     }
     try {
       await register.mutateAsync({ email, password, full_name: fullName });
-      toast.success("Account created! Please sign in.");
+      toast.success(t.auth.accountCreated);
       navigate("/login");
     } catch (error) {
       if (isApiError(error)) {
-        const detail = error.response?.data?.detail;
-        const message =
-          typeof detail === "string" ? detail : "Could not create account";
-        toast.error(message);
+        toast.error(formatApiError(error));
       } else {
-        toast.error("Network error. Please try again.");
+        toast.error(t.auth.networkError);
       }
     }
   };
