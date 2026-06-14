@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Loader2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Label, Textarea } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export interface ConfirmDialogProps {
@@ -100,16 +101,17 @@ export function ConfirmDialog({
         )}
         {input && (
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">
-              {input.label}
-            </label>
-            <textarea
+            <Label htmlFor="confirm-input">{input.label}</Label>
+            <Textarea
+              id="confirm-input"
               value={input.value}
-              onChange={(e) => input.onChange(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                input.onChange(e.target.value)
+              }
               placeholder={input.placeholder}
               rows={3}
               autoFocus
-              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              className="resize-none"
             />
           </div>
         )}

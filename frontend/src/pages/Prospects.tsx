@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Search, Filter, MoreHorizontal, Plus, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ const PAGE_SIZE = 20;
 
 export function ProspectsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
   const [statusFilter, setStatusFilter] = useState<ProspectStatus | "all">("all");
   const [page, setPage] = useState(1);
@@ -207,7 +208,7 @@ export function ProspectsPage() {
                   <tr
                     key={p.id}
                     className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer group"
-                    onClick={() => (window.location.href = `/prospects/${p.id}`)}
+                    onClick={() => navigate(`/prospects/${p.id}`)}
                   >
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
