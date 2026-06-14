@@ -4,10 +4,13 @@ ClientFinder AI Agent — Backend Entry Point (T8 production-hardened)
 import logging
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
 from app.api.v1 import (
@@ -57,11 +60,46 @@ app = FastAPI(
     title="ClientFinder AI Agent",
     version="0.1.0",
     description="AI-powered lead generation for freelance software developers",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # docs_url and redoc_url are overridden below to use locally-vendored
+    # assets (per R4: minimize external dependencies). The vendored copies
+    # live at backend/app/static/swagger-ui/ — see that directory for the
+    # script that refreshes them.
+    docs_url=None,
+    redoc_url=None,
     openapi_url="/openapi.json",
     lifespan=lifespan,
 )
+
+# Serve vendored Swagger UI / Redoc assets from /static.
+# Files: backend/app/static/swagger-ui/{swagger-ui.css, swagger-ui-bundle.js,
+# redoc.standalone.js}. Keeps the docs UI working behind firewalls /
+# air-gapped networks where the default jsdelivr CDN is unreachable.
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui():
+    """Swagger UI with locally-vendored CSS+JS (no CDN)."""
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Swagger UI",
+        swagger_js_url="/static/swagger-ui/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger-ui/swagger-ui.css",
+        swagger_favicon_url="/static/swagger-ui/favicon.png",
+    )
+
+
+@app.get("/redoc", include_in_schema=False)
+async def custom_redoc():
+    """ReDoc UI with locally-vendored JS (no CDN)."""
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - ReDoc",
+        redoc_js_url="/static/swagger-ui/redoc.standalone.js",
+        redoc_favicon_url="/static/swagger-ui/favicon.png",
+        with_google_fonts=False,
+    )
 
 # --- Middleware (order matters: outermost = first added) ---
 # 1. Security headers (outermost, so applies to ALL responses)
