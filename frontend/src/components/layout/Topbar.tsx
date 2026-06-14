@@ -27,12 +27,13 @@ import {
   MenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n/id";
 
 const routeLabels: Record<string, string> = {
-  dashboard: "Dashboard",
-  prospects: "Prospects",
-  pipeline: "Pipeline",
-  settings: "Settings",
+  dashboard: t.nav.dashboard,
+  prospects: t.nav.prospects,
+  pipeline: t.nav.pipeline,
+  settings: t.nav.settings,
 };
 
 interface TopbarProps {
@@ -61,10 +62,10 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
   const handleLogout = async () => {
     try {
       await logout.mutateAsync();
-      toast.success("Signed out");
+      toast.success(t.auth.signedOut);
       navigate("/login");
     } catch {
-      toast.error("Signed out locally");
+      toast.error(t.auth.signedOutLocally);
       clearAuth();
       navigate("/login");
     }
@@ -150,11 +151,11 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             type="search"
-            placeholder="Search prospects…"
+            placeholder={t.topbar.searchProspects}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search prospects"
-            className="h-9 w-64 pl-9 pr-3 rounded-md border border-input bg-background/50 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 placeholder:text-muted-foreground transition-colors"
+            aria-label={t.topbar.searchAriaLabel}
+            className="h-10 pl-9 w-64"
           />
         </form>
 
@@ -163,7 +164,7 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
           variant="ghost"
           size="icon"
           className="relative"
-          aria-label="Notifications"
+          aria-label={t.topbar.notifications}
         >
           <Bell className="h-4 w-4" />
           <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-rose-500" />
@@ -177,7 +178,7 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
             trigger={
               <button
                 type="button"
-                aria-label="User menu"
+                aria-label={t.topbar.userMenu}
                 className={cn(
                   "h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold text-sm",
                   "bg-gradient-to-br from-violet-500 to-indigo-600",
@@ -224,7 +225,7 @@ export function Topbar({ onShowHelp: _onShowHelp }: TopbarProps = {}) {
           </DropdownMenu>
         ) : (
           <Button asChild variant="ghost" size="sm">
-            <Link to="/login">Sign in</Link>
+            <Link to="/login">{t.auth.signIn}</Link>
           </Button>
         )}
       </div>
