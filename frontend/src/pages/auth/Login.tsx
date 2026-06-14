@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Sparkles, ArrowRight } from "lucide-react";
-import { toast } from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +13,7 @@ import {
 } from "@/components/ui/card";
 import { FormField, Input } from "@/components/ui/input";
 import { useLogin } from "@/hooks/useAuth";
-import { isApiError } from "@/api/client";
-import { formatApiError, formatFieldError } from "@/lib/formatError";
+import { formatFieldError } from "@/lib/formatError";
 import { t } from "@/i18n/id";
 
 export function LoginPage() {
@@ -51,16 +49,14 @@ export function LoginPage() {
       return;
     }
     setSubmitting(true);
+    // T8.5+++++++ Group 1: useApiMutation handles the toast
+    // (success: t.auth.welcomeBack, error: formatApiError)
+    // and the navigation on success.
     try {
       await login.mutateAsync({ email, password });
-      toast.success(t.auth.welcomeBack);
       navigate(from, { replace: true });
-    } catch (error) {
-      if (isApiError(error)) {
-        toast.error(formatApiError(error));
-      } else {
-        toast.error(t.auth.networkError);
-      }
+    } catch {
+      // Error already toasted by useApiMutation
     } finally {
       setSubmitting(false);
     }
