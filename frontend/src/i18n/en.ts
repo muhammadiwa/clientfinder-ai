@@ -312,6 +312,31 @@ const STRINGS = {
       noAudit: "No tech audit yet",
       noAuditDesc: "Run analyst to fingerprint the website",
     },
+    // T9.0 / Sprint 2 — Social Signal Agent signals
+    signals: {
+      section: "Social signals",
+      empty: "No signals detected yet",
+      emptyDesc: "Run re-analyze to trigger a Twitter/Threads scan",
+      kinds: {
+        hiring_developer: "Hiring developer",
+        need_software: "Needs software",
+        need_automation: "Needs automation",
+        need_ai: "Needs AI integration",
+        need_website: "Needs website",
+        complaint_manual: "Manual-process complaint",
+        launching_product: "Launching a product",
+        expansion: "Business expansion",
+        funding: "Seeking funding",
+        digital_transformation: "Digital transformation",
+        other: "Other signal",
+      },
+      sources: {
+        twitter: "X (Twitter)",
+        threads: "Threads",
+        social: "Social",
+      },
+      severityLabel: "Confidence",
+    },
     // Sprint 1 (T5 v3) / brief: 4 extra business-context fields
     ownerName: "Owner",
     ownerNamePlaceholder: "e.g. Budi Santoso",

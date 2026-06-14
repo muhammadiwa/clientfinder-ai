@@ -386,7 +386,7 @@ async def get_prospect_detail(
     prospect detail page).
     """
     from app.models.lead import Hook, LeadScore
-    from app.models.prospect import PainPoint, TechStack
+    from app.models.prospect import PainPoint, Signal, TechStack
 
     prospect = (
         await db.execute(
@@ -491,5 +491,24 @@ async def get_prospect_detail(
                 "is_used": h.is_used,
             }
             for h in hooks
+        ],
+        "signals": [
+            {
+                "id": str(s.id),
+                "signal_type": s.signal_type,
+                "source": s.source,
+                "source_url": s.source_url,
+                "raw_text": s.raw_text,
+                "weight": float(s.weight) if s.weight is not None else 0.5,
+                "detected_at": s.detected_at.isoformat() if s.detected_at else None,
+            }
+            for s in (
+                await db.execute(
+                    select(Signal)
+                    .where(Signal.prospect_id == prospect.id)
+                    .order_by(Signal.detected_at.desc())
+                    .limit(50)
+                )
+            ).scalars()
         ],
     }
