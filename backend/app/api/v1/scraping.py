@@ -4,12 +4,13 @@ Scraping router — endpoints for Scout module (T4)
 from typing import Annotated
 
 from celery.exceptions import OperationalError
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import DB
 from app.core.deps import CurrentUser
+from app.core.security import rate_limit_scraping
 from app.models.activity import Activity
 from app.models.prospect import Prospect
 from app.models.system import ScrapingJob
@@ -32,7 +33,9 @@ router = APIRouter(prefix="/scraping", tags=["scouting"])
     response_model=ScrapingJobOut,
     status_code=status.HTTP_201_CREATED,
 )
+@rate_limit_scraping()
 async def create_scraping_job(
+    request: Request,
     payload: ScrapingJobCreate,
     current_user: CurrentUser,
     db: DB,

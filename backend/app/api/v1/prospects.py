@@ -6,12 +6,18 @@ from datetime import datetime, timezone
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import DB
 from app.core.deps import CurrentUser
+from app.core.security import (
+    rate_limit_ai,
+    rate_limit_create,
+    rate_limit_delete,
+    rate_limit_update,
+)
 from app.models.activity import Activity
 from app.models.prospect import Prospect
 from app.schemas.prospect import (
@@ -95,7 +101,9 @@ async def list_prospects(
 
 
 @router.post("", response_model=ProspectOut, status_code=status.HTTP_201_CREATED)
+@rate_limit_create()
 async def create_prospect(
+    request: Request,
     payload: ProspectCreate,
     current_user: CurrentUser,
     db: DB,
@@ -155,7 +163,9 @@ async def get_prospect(
 
 
 @router.patch("/{prospect_id}", response_model=ProspectOut)
+@rate_limit_update()
 async def update_prospect(
+    request: Request,
     prospect_id: UUID,
     payload: ProspectUpdate,
     current_user: CurrentUser,
@@ -197,11 +207,12 @@ async def update_prospect(
 
 
 @router.delete("/{prospect_id}", status_code=status.HTTP_204_NO_CONTENT)
+@rate_limit_delete()
 async def delete_prospect(
+    request: Request,
     prospect_id: UUID,
     current_user: CurrentUser,
     db: DB,
-    hard_delete: bool = Query(False, description="Permanently delete (vs soft delete)"),
 ) -> None:
     """Delete a prospect (soft by default)."""
     result = await db.execute(

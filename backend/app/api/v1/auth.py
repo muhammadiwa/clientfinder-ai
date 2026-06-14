@@ -3,7 +3,7 @@ Auth router — login, refresh, logout, me
 """
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 
@@ -15,6 +15,9 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
     hash_password,
+    rate_limit_auth_login,
+    rate_limit_auth_refresh,
+    rate_limit_auth_register,
     verify_password,
 )
 from app.models.user import User
@@ -25,7 +28,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@rate_limit_auth_register()
 async def register(
+    request: Request,
     payload: UserCreate,
     db: DB,
 ) -> User:
@@ -55,7 +60,12 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
-async def login(payload: LoginRequest, db: DB) -> Token:
+@rate_limit_auth_login()
+async def login(
+    request: Request,
+    payload: LoginRequest,
+    db: DB,
+) -> Token:
     """Authenticate with email + password. Returns access + refresh tokens."""
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
@@ -90,7 +100,12 @@ async def login(payload: LoginRequest, db: DB) -> Token:
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh(payload: RefreshRequest, db: DB) -> Token:
+@rate_limit_auth_refresh()
+async def refresh(
+    request: Request,
+    payload: RefreshRequest,
+    db: DB,
+) -> Token:
     """Exchange a valid refresh token for a new access + refresh token pair."""
     token_payload = decode_token(payload.refresh_token, expected_type="refresh")
     if token_payload is None:

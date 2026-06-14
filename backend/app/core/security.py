@@ -239,12 +239,89 @@ def _client_key(request: Request) -> str:
     return f"ip:{get_remote_address(request)}"
 
 
+# T8.5: Redis-backed rate limiter storage.
+# Falls back to in-memory if Redis is unavailable.
+# In production (app_env != local), Redis is required.
+if settings.app_env == "local":
+    _storage_uri = "memory://"
+else:
+    _storage_uri = settings.redis_url
+
 limiter = Limiter(
     key_func=_client_key,
     default_limits=["200/minute"],
-    storage_uri="memory://",  # v1 in-memory; use redis in prod
+    storage_uri=_storage_uri,
     strategy="fixed-window",
+    # In-memory fallback so app doesn't crash if Redis is down
+    in_memory_fallback_enabled=True,
+    in_memory_fallback=["200/minute"],
 )
+
+
+# --- T8.5: Per-endpoint rate limit decorators ---
+# Use these instead of @limiter.limit(...) in route handlers
+# so the limit is co-located with the security policy.
+# Apply with: @rate_limit_auth, @rate_limit_send, etc.
+
+RATE_LIMITS = {
+    # Auth: strict to prevent brute force / spam
+    "auth_login": "5/minute",       # 5 attempts/min (15/hr would be ~720)
+    "auth_register": "3/hour",      # 3 registrations/hr
+    "auth_refresh": "30/minute",    # legitimate refresh
+    # Outbound: expensive, capped
+    "send_outreach": "10/minute",   # 10 sends/min
+    "ai_generate": "20/minute",     # 20 AI calls/min
+    "scraping_run": "5/minute",     # 5 scrapes/min
+    # Mutations: bounded but generous
+    "create": "30/minute",
+    "update": "60/minute",
+    "delete": "30/minute",
+}
+
+
+def rate_limit_auth_login():
+    """Login: 5/min (anti-brute-force)."""
+    return limiter.limit(RATE_LIMITS["auth_login"])
+
+
+def rate_limit_auth_register():
+    """Register: 3/hr (anti-spam)."""
+    return limiter.limit(RATE_LIMITS["auth_register"])
+
+
+def rate_limit_auth_refresh():
+    """Refresh: 30/min."""
+    return limiter.limit(RATE_LIMITS["auth_refresh"])
+
+
+def rate_limit_send():
+    """Send outreach: 10/min."""
+    return limiter.limit(RATE_LIMITS["send_outreach"])
+
+
+def rate_limit_ai():
+    """AI generation: 20/min."""
+    return limiter.limit(RATE_LIMITS["ai_generate"])
+
+
+def rate_limit_scraping():
+    """Scraping run: 5/min."""
+    return limiter.limit(RATE_LIMITS["scraping_run"])
+
+
+def rate_limit_create():
+    """Create: 30/min."""
+    return limiter.limit(RATE_LIMITS["create"])
+
+
+def rate_limit_update():
+    """Update: 60/min."""
+    return limiter.limit(RATE_LIMITS["update"])
+
+
+def rate_limit_delete():
+    """Delete: 30/min."""
+    return limiter.limit(RATE_LIMITS["delete"])
 
 
 def configure_rate_limiter(app: FastAPI) -> None:

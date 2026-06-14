@@ -16,11 +16,19 @@ Endpoints:
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import desc, func, select
 
+from app.core.config import settings
 from app.core.database import DB
 from app.core.deps import CurrentUser
+from app.core.security import (
+    rate_limit_ai,
+    rate_limit_create,
+    rate_limit_delete,
+    rate_limit_send,
+    rate_limit_update,
+)
 from app.models.outreach import Message
 from app.models.prospect import Prospect
 from app.schemas.outreach import (
@@ -74,7 +82,9 @@ async def get_outreach_stats(
     response_model=MessageOut,
     status_code=status.HTTP_201_CREATED,
 )
+@rate_limit_create()
 async def create_message(
+    request: Request,
     payload: MessageCreate,
     current_user: CurrentUser,
     db: DB,
@@ -181,7 +191,9 @@ async def get_message(
 
 
 @router.patch("/messages/{message_id}", response_model=MessageOut)
+@rate_limit_update()
 async def update_message(
+    request: Request,
     message_id: UUID,
     payload: MessageUpdate,
     current_user: CurrentUser,
@@ -210,7 +222,9 @@ async def update_message(
 
 
 @router.delete("/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+@rate_limit_delete()
 async def delete_message(
+    request: Request,
     message_id: UUID,
     current_user: CurrentUser,
     db: DB,
@@ -279,7 +293,9 @@ async def approve_endpoint(
 
 
 @router.post("/messages/{message_id}/send", response_model=MessageOut)
+@rate_limit_send()
 async def send_message_endpoint(
+    request: Request,
     message_id: UUID,
     current_user: CurrentUser,
     db: DB,
@@ -302,7 +318,9 @@ async def send_message_endpoint(
 
 
 @router.post("/messages/generate", response_model=MessageOut)
+@rate_limit_ai()
 async def generate_message(
+    request: Request,
     payload: MessageGenerateRequest,
     current_user: CurrentUser,
     db: DB,
