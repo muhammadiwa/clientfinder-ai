@@ -707,25 +707,26 @@ function FunnelBars({
     approval_rate: number;
   };
 }) {
+  const t = useT();
   const stages = [
-    { label: "Drafts", value: funnel.drafts, color: "bg-slate-500" },
+    { label: t.analytics.drafts, value: funnel.drafts, color: "bg-slate-500" },
     {
-      label: "Pending",
+      label: t.analytics.pending,
       value: funnel.pending_approval,
       color: "bg-amber-500",
     },
     {
-      label: "Approved",
+      label: t.analytics.approved,
       value: funnel.approved,
       color: "bg-sky-500",
     },
-    { label: "Sent", value: funnel.sent, color: "bg-emerald-500" },
+    { label: t.analytics.sentFunnel, value: funnel.sent, color: "bg-emerald-500" },
     {
-      label: "Delivered",
+      label: t.analytics.delivered,
       value: funnel.delivered,
       color: "bg-emerald-400",
     },
-    { label: "Replied", value: funnel.replied, color: "bg-violet-500" },
+    { label: t.analytics.repliedFunnel, value: funnel.replied, color: "bg-violet-500" },
   ];
   const max = Math.max(...stages.map((s) => s.value), 1);
   return (
@@ -745,7 +746,7 @@ function FunnelBars({
         </li>
       ))}
       <li className="pt-2 mt-2 border-t border-border flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">Approval rate</span>
+        <span className="text-muted-foreground">{t.analytics.approvalRate}</span>
         <span className="font-bold num tabular-nums text-emerald-600">
           {funnel.approval_rate.toFixed(0)}%
         </span>
