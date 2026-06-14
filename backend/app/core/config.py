@@ -118,6 +118,18 @@ class Settings(BaseSettings):
     threads_cookies_path: str = "/app/.sessions/threads_cookies.json"
     threads_daily_dm_limit: int = 20
 
+    # T9.0 — Social Signal Agent scrapers (Twitter / Threads)
+    # Both scrapers use cookie-based auth per R7 pragmatic-legal.
+    # Cookies are NOT committed (gitignored) — the operator must
+    # upload them manually via the setup script.
+    twitter_cookies_path: str = "/app/.sessions/twitter_cookies.json"
+    twitter_search_max_per_query: int = 30
+    twitter_max_age_days: int = 14
+    # When True, falls back to "no signals this run" if cookies are
+    # missing or stale instead of raising. Default True = pipeline
+    # stays healthy when cookies aren't set up yet.
+    twitter_soft_fail: bool = True
+
     # Scraping
     scraper_user_agent_rotation: bool = True
     scraper_request_delay_min: int = 3
