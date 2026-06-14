@@ -258,6 +258,27 @@ async def trigger_drip_runner(
     }
 
 
+# --- Analytics (Sprint 3A sub-task 3) ---
+
+
+@router.get("/{sequence_id}/analytics")
+async def get_sequence_analytics(
+    sequence_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+) -> dict:
+    """Per-step + per-channel analytics for a sequence.
+
+    Returns:
+        {sequence_id, sequence_name, daily_send_cap, totals,
+         by_step: [{step_index, sent, delivered, opened, ...,
+                    response_rate, open_rate}], by_channel,
+         today_sent, computed_at}
+    """
+    from app.services.outreach.analytics import compute_sequence_stats
+    return await compute_sequence_stats(db, sequence_id)
+
+
 @router.get("/{sequence_id}", response_model=SequenceOut)
 async def get_sequence(
     sequence_id: UUID,

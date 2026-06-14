@@ -226,6 +226,61 @@ export async function deleteSequence(id: string): Promise<void> {
   await api.delete(`/sequences/${id}`);
 }
 
+// --- Analytics (Sprint 3A sub-task 3) ---
+
+export interface SequenceStepStats {
+  step_index: number;
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  failed: number;
+  response_rate: number;
+  open_rate: number;
+}
+
+export interface SequenceChannelStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  failed: number;
+  response_rate: number;
+  open_rate: number;
+}
+
+export interface SequenceAnalytics {
+  sequence_id: string;
+  sequence_name: string;
+  daily_send_cap: number;
+  totals: {
+    sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    replied: number;
+    bounced: number;
+    failed: number;
+  };
+  by_step: SequenceStepStats[];
+  by_channel: Record<string, SequenceChannelStats>;
+  today_sent: number;
+  computed_at: string;
+}
+
+export async function getSequenceAnalytics(
+  sequenceId: string,
+): Promise<SequenceAnalytics> {
+  const { data } = await api.get<SequenceAnalytics>(
+    `/sequences/${sequenceId}/analytics`,
+  );
+  return data;
+}
+
 // --- Enrollments (Sprint 3A) ---
 
 export interface EnrollmentItem {

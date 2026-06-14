@@ -390,6 +390,15 @@ const STRINGS = {
     defaultDesc: "3 pesan: first_touch (day 0) → follow_up (day 3) → breakup (day 7)",
     activate: "Aktifkan",
     deactivate: "Nonaktifkan",
+    // Sprint 3A sub-task 3 — analytics widget
+    todayCap: "Cap hari ini",
+    totalSent: "Terkirim",
+    totalReplied: "Dibalas",
+    totalOpened: "Dibuka",
+    perStep: "Per langkah",
+    step: "Step",
+    loadingStats: "Memuat statistik…",
+    statsError: "Gagal memuat statistik",
   },
 
   // Outreach
