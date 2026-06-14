@@ -116,14 +116,23 @@ async def enrich_prospect(
             has_ssl=site.has_ssl,
         )
 
-        # 4. Score (no signals table yet; use pain count as proxy)
-        n_signals = 0  # TODO: count from signals table
+        # 4. Score (7 factors + risk penalty, Sprint 1)
+        n_signals = 0  # TODO: count from signals table (T9.0)
+        # Sprint 1: read has_social from extra (T8.6 enrichment stores it)
+        has_social = bool((prospect.raw_data or {}).get("social"))
+        has_address = bool((prospect.raw_data or {}).get("location_address"))
         score = compute_score(
             n_signals=n_signals,
             pains=pains,
             industry=prospect.industry,
             location_city=prospect.location_city,
             discovered_at=prospect.discovered_at or datetime.now(timezone.utc),
+            has_phone=bool(prospect.phone),
+            has_email=bool(prospect.email),
+            has_social=has_social,
+            has_address=has_address,
+            has_website=bool(prospect.website),
+            source=prospect.source,
         )
 
         # 5. Persist TechStack (1:1, upsert)
@@ -189,6 +198,9 @@ async def enrich_prospect(
                         "budget_indicator": score.budget_indicator,
                         "solution_fit": score.solution_fit,
                         "timing_urgency": score.timing_urgency,
+                        "contact_availability": score.contact_availability,
+                        "personalization_quality": score.personalization_quality,
+                        "risk_penalty": score.risk_penalty,
                     },
                 },
             )
@@ -214,6 +226,9 @@ async def enrich_prospect(
                 "budget_indicator": score.budget_indicator,
                 "solution_fit": score.solution_fit,
                 "timing_urgency": score.timing_urgency,
+                "contact_availability": score.contact_availability,
+                "personalization_quality": score.personalization_quality,
+                "risk_penalty": score.risk_penalty,
             },
             "reasoning": score.reasoning,
             "site": {
