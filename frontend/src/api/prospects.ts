@@ -11,10 +11,12 @@ export interface TechStack {
   cms: string | null;
   framework: string | null;
   has_ssl: boolean | null;
-  has_viewport_meta: boolean | null;
+  has_viewport_meta: boolean;
   payment_gateways: string[];
   body_bytes_read: number | null;
   technologies: string[];
+  hosting_provider: string | null;
+  issues: string[];
   audited_at: string;
 }
 
@@ -30,7 +32,19 @@ export interface LeadScore {
   id: string;
   grade: string;
   total: number;
+  total_score: number;     // alias for some callers
   reasoning: string | null;
+  // 9-factor score breakdown (mirrors backend/app/services/analyzer/scorer.py:ScoreBreakdown)
+  signal_strength: number;
+  pain_severity: number;
+  budget_indicator: number;
+  solution_fit: number;
+  timing_urgency: number;
+  contact_availability: number;
+  personalization_quality: number;
+  tier: number;
+  industry_specificity: number;
+  risk_penalty: number;
   scored_at: string;
 }
 
@@ -39,6 +53,7 @@ export interface Hook {
   hook_text: string;
   audit_finding: string | null;
   recommended_service: string | null;
+  confidence: number | null;   // 0.0-1.0 (from T5 LLM analyst)
   is_used: boolean;
 }
 

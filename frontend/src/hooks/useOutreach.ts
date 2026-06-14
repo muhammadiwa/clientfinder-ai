@@ -13,8 +13,8 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import * as outreachApi from "@/api/outreach";
-import type { Message, OutreachStats } from "@/types";
-import type { MessageListFilters } from "@/api/outreach";
+import type { Message, MessageStatus, OutreachStats } from "@/types";
+import type { MessageListFilters, SequenceTimeSeries } from "@/api/outreach";
 import { formatApiError } from "@/lib/formatError";
 import { toast } from "react-hot-toast";
 
@@ -47,14 +47,14 @@ export function useMessages(
   // Build the API params from the UI state
   const apiParams: MessageListFilters = { page: 1, per_page: 50 };
   if (params.tab === "pending_approval") apiParams.status = "pending_approval";
-  else if (params.tab === "drafts") apiParams.status = "draft";
-  else if (params.tab === "failed") apiParams.status = "failed";
-  else if (params.tab === "sent") {
-    // "sent" tab includes all post-send states
-    apiParams.status = "sent"; // approximate — backend doesn't support IN
-  }
+    else if (params.tab === "drafts") apiParams.status = "draft" as MessageStatus;
+    else if (params.tab === "failed") apiParams.status = "failed" as MessageStatus;
+    else if (params.tab === "sent") {
+      // "sent" tab includes all post-send states
+      apiParams.status = "sent" as MessageStatus; // approximate — backend doesn't support IN
+    }
   if (params.filterChannel !== "all") {
-    apiParams.channel = params.filterChannel as string;
+    apiParams.channel = params.filterChannel as Message["channel"];
   }
   if (params.filterGrade !== "all") {
     apiParams.prospect_grade = params.filterGrade;

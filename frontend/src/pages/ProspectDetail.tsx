@@ -299,7 +299,9 @@ export function ProspectDetailPage() {
                     (classifyResult?.tier ?? prospect.tier ?? null) as Tier | null
                   }
                   confidence={
-                    classifyResult?.tier_confidence ?? prospect.tier_confidence
+                    (classifyResult?.tier_confidence
+                      ?? prospect.tier_confidence
+                      ?? undefined) as number | undefined
                   }
                 />
                 <StatusPill status={prospect.status} />
@@ -714,14 +716,14 @@ export function ProspectDetailPage() {
                     key={p.id}
                     className={cn(
                       "p-3 rounded-lg border border-border bg-card",
-                      getSeverityBg(p.severity),
+                      getSeverityBg(String(p.severity)),
                     )}
                   >
                     <div className="flex items-start gap-2.5">
                       <span
                         className={cn(
                           "mt-0.5 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded text-xs font-bold uppercase",
-                          getSeverityBadge(p.severity),
+                          getSeverityBadge(String(p.severity)),
                         )}
                       >
                         {p.severity}
@@ -826,11 +828,11 @@ export function ProspectDetailPage() {
                           <span
                             className={cn(
                               "text-xs font-medium num tabular-nums",
-                              getConfidenceColor(hook.confidence),
+                              getConfidenceColor(hook.confidence ?? 0),
                             )}
                             title={t.prospectDetail.confidenceScore}
                           >
-                            {Math.round(hook.confidence * 100)}% confident
+                            {Math.round((hook.confidence ?? 0) * 100)}% confident
                           </span>
                         </div>
                         <Button

@@ -292,11 +292,20 @@ export interface TemplateListResponse {
 
 // --- T6 Sequences (T6 Group 3) ---
 
+/**
+ * SequenceChannel extends MessageChannel with the "auto" sentinel.
+ * "auto" = let the channel_selector pick email vs WhatsApp based
+ * on the prospect's contact info + industry bias (see
+ * backend/app/services/outreach/channel_selector.py).
+ */
+export type SequenceChannel = MessageChannel | "auto";
+
 export interface SequenceStep {
   order: number;
-  channel: MessageChannel;
+  channel: SequenceChannel;
   template_id?: string | null;
   day_offset: number;
+  category?: string;     // T6 Group 3 — first_touch | follow_up | breakup
   conditions?: Record<string, unknown>;
 }
 
@@ -305,6 +314,7 @@ export interface Sequence {
   name: string;
   description: string | null;
   steps: SequenceStep[];
+  step_count: number;   // Sprint 3A.2 — convenience for UI (server-computed len(steps))
   is_active: boolean;
   target_grade: string[] | null;
   target_source: string[] | null;

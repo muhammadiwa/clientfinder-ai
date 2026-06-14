@@ -3,34 +3,34 @@
 Items that need follow-up after the Sprint 1+2+3A+3B+3C work.
 Captured in the wrap-up commit `cbecbfc` (2026-06-14).
 
-## Frontend build: re-enable strict typecheck
+## Frontend build: re-enable strict typecheck ✅ DONE (2026-06-14)
 
-The frontend build was switched from `tsc -b && vite build`
-to just `vite build` because `tsc -b` (project references
-mode) caught 14+ type errors that `tsc --noEmit` (loose mode)
-didn't. vite (esbuild) handles TS more permissively, so the
-build now succeeds. Types are still checked at dev time
-via `tsc --noEmit` + the IDE.
+The 5 type fields documented in this section were all added in
+this PR. Strict typecheck is re-enabled: `tsc -b && vite build`
+runs clean in the docker build as of 2026-06-14.
 
-**To re-enable strict typecheck in the build**:
+### Original 5 issues (all fixed)
 
-1. Add the missing type definitions (5 items below)
-2. Restore `"build": "tsc -b && vite build"` in
-   `frontend/package.json`
+- ✅ `MessageListResponse` — imported from `@/types` in `outreach.ts`
+- ✅ `Sequence.step_count` — added to the `Sequence` interface in `@/types`
+- ✅ `SequenceTimeSeries` — imported from `@/api/outreach` in `useOutreach.ts`
+- ✅ `Hook.confidence` — added as `number | null` to the `Hook` type
+- ✅ `LeadScore.pain_severity` (+ all breakdown fields) — full
+  9-factor breakdown added to the `LeadScore` type
 
-### Missing type fields (5 items)
+### Bonus downstream fixes (uncovered while re-enabling strict tsc -b)
 
-- `frontend/src/api/outreach.ts:46, 55` — `MessageListResponse`
-  is not imported (used as return type of `listMessages`).
-- `frontend/src/components/EnrollmentPanel.tsx:131` —
-  `Sequence.step_count` is not in the `Sequence` type
-  (backend returns it; type needs the field added).
-- `frontend/src/hooks/useOutreach.ts:209` — `SequenceTimeSeries`
-  not imported.
-- `frontend/src/pages/Outreach.tsx:337` — `Hook.confidence`
-  not in the `Hook` type (backend returns it).
-- `frontend/src/pages/ProspectDetail.tsx:496` —
-  `LeadScore.pain_severity` not in the `LeadScore` type.
+- ✅ `SequenceChannel` type added as `MessageChannel | "auto"`
+- ✅ `SequenceStep.category` field added
+- ✅ `TechStack` type expanded with `issues`, `hosting_provider`
+- ✅ `MessageStatus` import added to `useOutreach.ts`
+- ✅ `MessageChannel` import added to `outreach.ts`
+- ✅ `HookCard` prop type uses the full `Hook` type (was an
+  inline subset with a `confience` typo — missing the 'a')
+- ✅ `prospectHooks` state in `Outreach.tsx` uses `Hook[]`
+  directly (was an inline subset with the same `confience` typo)
+- ✅ `prospect.tier_confidence` null handling on `TierBadge`
+- ✅ `hook.confidence ?? 0` null handling in the hook card display
 
 ## Operational gaps (post-90% brief alignment)
 

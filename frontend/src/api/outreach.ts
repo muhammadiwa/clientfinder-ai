@@ -1,5 +1,18 @@
 import { api } from "./client";
-import type { Message, OutreachStats, Template, TemplateListResponse, Sequence, SequenceListResponse, SequenceStep } from "@/types";
+import type {
+  Message,
+  MessageChannel,
+  OutreachStats,
+  Template,
+  TemplateListResponse,
+  Sequence,
+  SequenceListResponse,
+  SequenceStep,
+  MessageListResponse,
+} from "@/types";
+
+// SequenceTimeSeries types live here (outreach.ts) since they're
+// outreach-domain. Imported by useOutreach.ts.
 
 export interface MessageCreate {
   prospect_id: string;
