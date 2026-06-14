@@ -15,7 +15,8 @@ from app.models.prospect import Prospect
 from app.services.scraper.base import BaseScraper, ScrapedResult
 from app.services.scraper.google import GoogleSearchScraper
 from app.services.scraper.maps import GoogleMapsScraper
-from app.services.scraper.twitter import ThreadsScraper, TwitterScraper
+from app.services.scraper.threads import ThreadsScraper
+from app.services.scraper.twitter import TwitterScraper
 
 logger = logging.getLogger("clientfinder.scraper")
 
