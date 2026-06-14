@@ -198,13 +198,23 @@ const STRINGS = {
     reAnalyze: "Analisis ulang",
     reAnalyzing: "Menganalisis ulang…",
     generateHooks: "Buat hook",
+    regenerate: "Buat ulang",
     generating: "Membuat…",
     reAnalyzeFailed: "Analisis ulang gagal",
     hookGenFailed: "Pembuatan hook gagal",
     hookCopied: "Hook disalin ke clipboard",
     copyFailed: "Gagal menyalin",
+    failedToLoadDetail: "Gagal memuat detail",
     notYetAnalyzed: "Belum dianalisis",
     notYetAnalyzedDesc: "Jalankan pipeline analis untuk menghitung rincian skor 5 faktor",
+    reasoning: "Alasan",
+    noPainPoints: "Tidak ada masalah terdeteksi",
+    noPainPointsDesc:
+      "Prospek sudah digital-first, atau analis belum dijalankan",
+    noHooksYet: "Belum ada hook",
+    noHooksYetDesc:
+      "Klik 'Buat hook' untuk mendapatkan 3 sudut outreach yang dipersonalisasi",
+    confidenceScore: "Skor kepercayaan",
     factors: {
       painSeverity: "Tingkat keparahan masalah",
       painSeverityDesc: "Rata-rata keparahan × jumlah masalah",
@@ -220,6 +230,7 @@ const STRINGS = {
     tech: {
       framework: "Framework",
       hosting: "Hosting",
+      cms: "CMS",
       noAudit: "Belum ada audit teknologi",
       noAuditDesc: "Jalankan analis untuk sidik jari situs web",
     },
