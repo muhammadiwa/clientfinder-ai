@@ -15,6 +15,8 @@ import {
 } from "@/api/outreach";
 import { getT } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { ActivityChart } from "@/components/charts/ActivityChart";
+import { useSequenceTimeSeries } from "@/hooks/useOutreach";
 
 /**
  * Sequences — Sprint 3A frontend.
@@ -275,9 +277,59 @@ function SequenceRow({
           </ol>
           {/* Per-step analytics (Sprint 3A sub-task 3) */}
           <SequenceStats sequenceId={sequence.id} />
+          {/* Per-step time series chart (Sprint 3A carryover) */}
+          <SequenceTimeSeriesChart sequenceId={sequence.id} />
         </div>
       )}
     </li>
+  );
+}
+
+/**
+ * SequenceTimeSeriesChart — line chart of sent / replied per day
+ * for the lookback window. Sprint 3A carryover from the per-step
+ * analytics work. Reuses the ActivityChart for visual consistency.
+ */
+function SequenceTimeSeriesChart({ sequenceId }: { sequenceId: string }) {
+  const t = getT().sequences;
+  const { data, isLoading, error } = useSequenceTimeSeries(sequenceId, 30);
+
+  if (isLoading) {
+    return (
+      <div className="mt-3 text-xs text-muted-foreground">
+        {t.loadingChart}
+      </div>
+    );
+  }
+  if (error || !data) {
+    return (
+      <div className="mt-3 text-xs text-red-500">
+        {error ? String((error as Error).message) : t.chartError}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-testid="sequence-timeseries-chart"
+      className="mt-3"
+    >
+      <p className="text-muted-foreground text-xs mb-1.5">
+        {t.timeSeries}
+      </p>
+      <ActivityChart
+        data={data.by_day.map((d) => ({
+          date: d.date,
+          sent: d.sent,
+          replied: d.replied,
+        }))}
+        series={[
+          { key: "sent", label: t.sent, color: "#8b5cf6" },
+          { key: "replied", label: t.replied, color: "#10b981" },
+        ]}
+        heightClass="h-40"
+      />
+    </div>
   );
 }
 

@@ -418,6 +418,12 @@ const STRINGS = {
     step: "Step",
     loadingStats: "Loading stats…",
     statsError: "Failed to load stats",
+    // Sprint 3A carryover — per-day time series chart
+    timeSeries: "Per day (last 30 days)",
+    loadingChart: "Loading chart…",
+    chartError: "Failed to load chart",
+    sent: "Sent",
+    replied: "Replied",
   },
 
   // Outreach

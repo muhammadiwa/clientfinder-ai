@@ -18,11 +18,11 @@ and step_index that the drip_runner wrote).
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.outreach import Message, Sequence
@@ -179,6 +179,97 @@ async def compute_sequence_stats(
         "today_sent": today_sent,
         "computed_at": datetime.utcnow().isoformat() + "Z",
     }
+
+
+async def compute_sequence_time_series(
+    db: AsyncSession,
+    sequence_id: UUID,
+    days: int = 30,
+) -> list[dict[str, Any]]:
+    """Per-day time series of sequence step metrics for the chart.
+
+    Returns a list of {date, sent, delivered, opened, clicked,
+    replied} dicts, one per day in the lookback window. Days with
+    no activity are filled with zeros (so the chart shows a
+    continuous time axis).
+
+    For v1, aggregates across ALL steps in the sequence
+    (per-day totals, not per-day-per-step). Per-step time series
+    would explode the chart; the operator can use the existing
+    per-step totals in the donut view for that level of detail.
+    """
+    end = datetime.utcnow().date()
+    start = end - timedelta(days=days - 1)
+    # Single query: pull all messages with sent_at in the window,
+    # bucketed by DATE(sent_at). Each message contributes 1 to
+    # the day's `sent` + 1 to delivered/opened/clicked/replied
+    # if the corresponding timestamp is set.
+    rows = (
+        await db.execute(
+            select(
+                func.date(Message.sent_at).label("day"),
+                func.count(Message.id).label("sent"),
+                func.sum(
+                    case(
+                        (Message.delivered_at.is_not(None), 1),
+                        else_=0,
+                    )
+                ).label("delivered"),
+                func.sum(
+                    case(
+                        (Message.opened_at.is_not(None), 1),
+                        else_=0,
+                    )
+                ).label("opened"),
+                func.sum(
+                    case(
+                        (Message.clicked_at.is_not(None), 1),
+                        else_=0,
+                    )
+                ).label("clicked"),
+                func.sum(
+                    case(
+                        (Message.replied_at.is_not(None), 1),
+                        else_=0,
+                    )
+                ).label("replied"),
+            ).where(
+                func.coalesce(
+                    Message.extra_metadata["sequence_id"].astext, ""
+                ) == str(sequence_id),
+                Message.sent_at.is_not(None),
+                func.date(Message.sent_at) >= start,
+                func.date(Message.sent_at) <= end,
+            ).group_by(func.date(Message.sent_at))
+            .order_by(func.date(Message.sent_at))
+        )
+    ).all()
+
+    # Bucket by date string, then fill missing days with zeros
+    by_day: dict[str, dict[str, int]] = {}
+    for r in rows:
+        d = r.day
+        # r.day may be a date or string depending on driver
+        d_str = d.isoformat() if hasattr(d, "isoformat") else str(d)
+        by_day[d_str] = {
+            "sent": int(r.sent or 0),
+            "delivered": int(r.delivered or 0),
+            "opened": int(r.opened or 0),
+            "clicked": int(r.clicked or 0),
+            "replied": int(r.replied or 0),
+        }
+    out: list[dict[str, Any]] = []
+    cur = start
+    while cur <= end:
+        d_str = cur.isoformat()
+        row = by_day.get(d_str, {
+            "sent": 0, "delivered": 0, "opened": 0,
+            "clicked": 0, "replied": 0,
+        })
+        row = {"date": d_str, **row}
+        out.append(row)
+        cur = cur + timedelta(days=1)
+    return out
 
 
 async def count_sent_today_for_sequence(

@@ -102,7 +102,6 @@ export function usePendingApprovalCount(): number {
   const { data } = useOutreachStats();
   return data?.pending_approval ?? 0;
 }
-
 /**
  * useMessagesWithErrorToast — same as useMessages but
  * auto-toasts errors via formatApiError. Use when the
@@ -200,4 +199,21 @@ export function useOptimisticStats() {
       // reconcile the cache.
     },
   };
+}
+
+// --- Sprint 3A carryover: sequence time series ---
+
+export function useSequenceTimeSeries(
+  sequenceId: string | null | undefined,
+  days = 30,
+): UseQueryResult<SequenceTimeSeries, Error> {
+  return useQuery({
+    queryKey: ["sequences", "timeseries", sequenceId, days] as const,
+    queryFn: () =>
+      sequenceId
+        ? outreachApi.getSequenceTimeSeries(sequenceId, days)
+        : Promise.reject(new Error("no sequence id")),
+    enabled: !!sequenceId,
+    staleTime: 60_000,
+  });
 }
