@@ -289,6 +289,7 @@ const STRINGS = {
     bulkApprovedToast: "{ok} dari {total} pesan disetujui",
     bulkRejectedToast: "{ok} dari {total} pesan ditolak",
     bulkApproveAllFailed: "Semua persetujuan gagal",
+    bulkRejectAllFailed: "Semua penolakan gagal",
     noMessages: "Tidak ada pesan",
     allCaughtUp: "Semua sudah selesai",
     sentCheckTab: "Terkirim (cek tab Sent untuk status)",

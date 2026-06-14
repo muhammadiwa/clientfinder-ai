@@ -464,19 +464,38 @@ export function OutreachPage() {
 
   const bulkReject = async () => {
     if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
     setBulkBusy(true);
-    let ok = 0;
-    for (const id of Array.from(selectedIds)) {
-      try {
-        await approveMessage(id, { approve: false });
-        ok++;
-      } catch {
-        // ignore
+    // T8.5+++++++ Group 2 (mirror): optimistic UI for bulk
+    // reject. Removes from pending tab immediately,
+    // reverts on full failure.
+    let okCount = 0;
+    let allFailed = false;
+    await applyOptimistic(ids, async () => {
+      let succeeded = 0;
+      for (const id of ids) {
+        try {
+          await approveMessage(id, { approve: false });
+          succeeded++;
+        } catch {
+          // Per-message failures don't roll back the
+          // optimistic update — that one succeeded.
+        }
       }
-    }
-    toast.success(`Rejected ${ok}/${selectedIds.size}`);
+      okCount = succeeded;
+      if (succeeded === 0) {
+        allFailed = true;
+        throw new Error("All rejections failed");
+      }
+    });
+    toast.success(
+      allFailed
+        ? t.outreach.bulkRejectAllFailed
+        : t.outreach.bulkRejectedToast
+            .replace("{ok}", String(okCount))
+            .replace("{total}", String(ids.length)),
+    );
     clearSelection();
-    reload();
     setBulkBusy(false);
   };
 
