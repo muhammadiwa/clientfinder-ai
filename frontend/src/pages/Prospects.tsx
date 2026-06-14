@@ -77,10 +77,10 @@ export function ProspectsPage() {
           >
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Search by company, email…"
+              placeholder={t.prospects.searchPlaceholder}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              aria-label="Search prospects"
+              aria-label={t.prospects.searchAriaLabel}
               className="h-10 pl-9 w-64"
             />
           </form>

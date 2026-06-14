@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label, Textarea } from "@/components/ui/input";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n/id";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -45,8 +46,8 @@ export function ConfirmDialog({
   title,
   description,
   input,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
+  confirmText = t.confirmDialog.defaultConfirmText,
+  cancelText = t.confirmDialog.defaultCancelText,
   destructive = false,
   loading = false,
   onConfirm,
@@ -99,7 +100,7 @@ export function ConfirmDialog({
             onClick={() => onOpenChange(false)}
             disabled={loading}
             className="text-muted-foreground hover:text-foreground p-1 -mt-1 -mr-1"
-            aria-label="Close"
+            aria-label={t.confirmDialog.ariaClose}
           >
             <X className="h-4 w-4" />
           </button>

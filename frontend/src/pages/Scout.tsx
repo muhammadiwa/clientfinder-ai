@@ -694,7 +694,7 @@ function JobRow({ job, onRetry, onDelete }: JobRowProps) {
               size="icon"
               className="h-7 w-7"
               onClick={() => onRetry(job.id)}
-              title="Retry"
+              title={t.scout.retry}
             >
               <RotateCcw className="h-3.5 w-3.5" />
             </Button>
@@ -704,7 +704,7 @@ function JobRow({ job, onRetry, onDelete }: JobRowProps) {
             size="icon"
             className="h-7 w-7"
             onClick={() => onDelete(job.id)}
-            title="Delete"
+            title={t.scout.delete}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

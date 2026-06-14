@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth";
 import { useMe } from "@/hooks/useAuth";
+import { t } from "@/i18n/id";
 
 /**
  * Settings / Team section
@@ -35,7 +36,7 @@ export function TeamSection() {
             Manage team members and permissions
           </p>
         </div>
-        <Button size="sm" disabled title="Multi-user support coming in T8">
+        <Button size="sm" disabled title={t.team.multiUserComing}>
           <Plus className="h-4 w-4" />
           Invite member
         </Button>
