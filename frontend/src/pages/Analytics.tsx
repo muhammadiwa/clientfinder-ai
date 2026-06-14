@@ -98,14 +98,14 @@ export function AnalyticsPage() {
           value={data.total_leads}
           icon={<Users className="h-4 w-4" />}
           tone="violet"
-          sparkline={data.daily_volume.map((v) => v.sent)}
+          sparkline={data.daily_volume.map((v) => v.baru)}
         />
         <HeroMetric
           label={t.analytics.messagesSent}
           value={data.total_messages_sent}
           icon={<Send className="h-4 w-4" />}
           tone="emerald"
-          sparkline={data.daily_volume.map((v) => v.sent)}
+          sparkline={data.daily_volume.map((v) => v.baru)}
         />
         <HeroMetric
           label={t.analytics.replyRate}
@@ -756,33 +756,33 @@ function FunnelBars({
 function DailyVolumeChart({
   data,
 }: {
-  data: { date: string; sent: number; replied: number }[];
+  // T8.5+++++++ (telemetry fix): now uses the new
+  // 4-series PROSPECT pipeline shape (baru/dinilai/
+  // dihubungi/menang). Charts the `baru` series
+  // (new prospects added per day) — the same data the
+  // Dashboard's "Aktivitas pipeline" chart shows, but
+  // as a simpler bar chart (no multi-series area).
+  data: { date: string; baru: number }[];
 }) {
   if (data.length === 0) {
     return <EmptyMini label="No activity in this period" />;
   }
-  const max = Math.max(...data.map((d) => d.sent), 1);
+  const max = Math.max(...data.map((d) => d.baru), 1);
   return (
     <div>
       <div className="flex items-end gap-0.5 h-32">
         {data.map((d) => {
-          const sentPct = (d.sent / max) * 100;
+          const baruPct = (d.baru / max) * 100;
           return (
             <div
               key={d.date}
               className="flex-1 group relative"
-              title={`${d.date}: ${d.sent} sent, ${d.replied} replied`}
+              title={`${d.date}: ${d.baru} prospek baru`}
             >
               <div
                 className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-violet-200 to-violet-400 dark:from-violet-900 dark:to-violet-600 rounded-t"
-                style={{ height: `${sentPct}%`, minHeight: "2px" }}
+                style={{ height: `${baruPct}%`, minHeight: "2px" }}
               />
-              {d.replied > 0 && (
-                <div
-                  className="absolute bottom-0 left-0 right-0 bg-emerald-500 rounded-t"
-                  style={{ height: `${(d.replied / max) * 100}%`, minHeight: "1px" }}
-                />
-              )}
             </div>
           );
         })}
@@ -795,11 +795,7 @@ function DailyVolumeChart({
       <div className="flex items-center gap-3 mt-2 text-xs">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-sm bg-violet-400" />
-          <span className="text-muted-foreground">Sent</span>
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-sm bg-emerald-500" />
-          <span className="text-muted-foreground">Replied</span>
+          <span className="text-muted-foreground">Prospek baru</span>
         </span>
       </div>
     </div>
