@@ -1,115 +1,135 @@
 /**
  * useOptimisticMessages — F4 optimistic UI for Outreach mutations.
  *
- * T8.5+++++++ Group 2: TanStack Query F4 optimistic UI.
+ * T8.5+++++++ Group 2 (initial): local state mutations only.
+ * T8.5+++++++ (cache-level): also updates the TanStack Query
+ * cache via setQueryData, so other components viewing the
+ * same queryKey see the update.
  *
- * Pattern:
+ * Pattern (local + cache):
  *   1. User clicks "Approve" on a message
- *   2. We IMMEDIATELY update the local messages state
- *      (e.g. remove from pending_approval tab since the
- *      status is now 'approved')
+ *   2. We IMMEDIATELY:
+ *      a. Snapshot the current query cache
+ *      b. Remove the message from the cache (via setQueryData)
+ *      c. Remove from local state (so the optimistic-UI
+ *         helper still works for any UI bound to local state)
  *   3. We await the API call
- *   4. On success: the local state is already correct;
- *      we just reload() to sync with the server
- *   5. On failure: we RESTORE the original messages
- *      (rollback) and show the error toast
+ *   4. On success: cache is already correct; the next
+ *      refetch will confirm
+ *   5. On failure: we RESTORE both the cache and local
+ *      state (rollback) and show the error toast
  *
- * Why this matters: the R10 review queue is the most
- * time-sensitive surface. When you approve 20 messages,
- * you want them to disappear from the pending tab
- * IMMEDIATELY, not after a 5-second wait while the
- * server processes 20 sequential API calls.
+ * Why this matters: with the previous local-only approach,
+ * only THIS component saw the optimistic update. With
+ * cache-level updates, ANY component bound to the same
+ * queryKey (e.g. a future "pending count" badge in the
+ * sidebar) sees the update immediately. Single source
+ * of truth = single place to update.
  */
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 
 import type { Message } from "@/types";
 
 /**
- * Optimistically update the messages state to remove
- * the given ids (since their status changed and they're
- * no longer in the current tab).
- *
- * Returns a function that, when called, restores the
- * original state — use it in the catch block.
- */
-export function useOptimisticMessages(
-  currentMessages: Message[],
-  setMessages: (next: Message[]) => void,
-) {
-  // Track the pre-optimistic state so we can rollback
-  const [snapshot, setSnapshot] = useState<Message[] | null>(null);
-
-  /**
-   * Optimistically remove messages with the given ids.
-   * The id set is captured as a Set for O(1) lookup.
-   */
-  const optimisticallyRemove = useCallback(
-    (ids: Iterable<string>) => {
-      const idSet = new Set(ids);
-      if (idSet.size === 0) return;
-      setSnapshot(currentMessages);
-      setMessages(currentMessages.filter((m) => !idSet.has(m.id)));
-    },
-    [currentMessages, setMessages],
-  );
-
-  /**
-   * Rollback to the pre-optimistic state.
-   * Call this in the catch block.
-   */
-  const rollback = useCallback(() => {
-    if (snapshot) {
-      setMessages(snapshot);
-      setSnapshot(null);
-    }
-  }, [snapshot, setMessages]);
-
-  /**
-   * Clear the snapshot (call on success to free memory).
-   */
-  const clearSnapshot = useCallback(() => {
-    setSnapshot(null);
-  }, []);
-
-  return { optimisticallyRemove, rollback, clearSnapshot };
-}
-
-/**
- * Higher-level helper: apply an optimistic mutation
- * to the messages list with automatic rollback on error.
+ * Apply an optimistic mutation to BOTH the local messages
+ * state AND the TanStack query cache, with automatic
+ * rollback on error.
  *
  * Usage:
- *   const applyOptimistic = useApplyOptimistic(messages, setMessages);
+ *   const applyOptimistic = useApplyOptimistic({
+ *     messages, setMessages,
+ *     queryKey: messagesQueryKey,
+ *   });
+ *   await applyOptimistic([id], async () => {
+ *     await approveMessage(id, { approve: true });
+ *   });
  *
- *   const handleApprove = async (id: string) => {
- *     await applyOptimistic([id], async () => {
- *       await approveMessage(id, { approve: true });
- *     }, t.outreach.approvedToast, t.outreach.approvalFailed);
- *   };
+ * On success: leaves both state + cache updated.
+ * On throw: rolls back BOTH, re-throws for caller to toast.
  */
-export function useApplyOptimistic(
-  currentMessages: Message[],
-  setMessages: (next: Message[]) => void,
-) {
+export function useApplyOptimistic(opts: {
+  messages: Message[];
+  setMessages: (next: Message[]) => void;
+  queryKey: QueryKey;
+}) {
+  const { messages, setMessages, queryKey } = opts;
+  const queryClient = useQueryClient();
+
   return useCallback(
     async (
       ids: string[],
       mutation: () => Promise<void>,
     ) => {
-      // Snapshot for rollback
-      const snapshot = currentMessages;
       const idSet = new Set(ids);
-      if (idSet.size > 0) {
-        setMessages(currentMessages.filter((m) => !idSet.has(m.id)));
+      if (idSet.size === 0) {
+        // No-op: just run the mutation
+        try {
+          await mutation();
+        } catch {
+          throw new Error("mutation failed");
+        }
+        return;
       }
+
+      // Snapshot BOTH the local state and the cache so
+      // we can roll back on error.
+      const localSnapshot = messages;
+      const cacheSnapshot = queryClient.getQueryData<{ items: Message[]; total: number }>(queryKey);
+
+      // 1) Optimistic local update
+      setMessages(messages.filter((m) => !idSet.has(m.id)));
+
+      // 2) Optimistic cache update (matches the queryKey
+      //    shape used by useMessages in useOutreach.ts)
+      if (cacheSnapshot) {
+        queryClient.setQueryData<{ items: Message[]; total: number }>(
+          queryKey,
+          {
+            ...cacheSnapshot,
+            items: cacheSnapshot.items.filter((m) => !idSet.has(m.id)),
+            total: Math.max(cacheSnapshot.total - ids.length, 0),
+          },
+        );
+      }
+
       try {
         await mutation();
       } catch {
-        // Rollback on any error
-        setMessages(snapshot);
+        // Rollback BOTH
+        setMessages(localSnapshot);
+        if (cacheSnapshot !== undefined) {
+          queryClient.setQueryData(queryKey, cacheSnapshot);
+        }
         throw new Error("mutation failed");
       }
     },
-    [currentMessages, setMessages],
+    [messages, setMessages, queryClient, queryKey],
+  );
+}
+
+/**
+ * Lower-level helper for advanced use cases.
+ * Returns a function that takes ids and a mutation, and
+ * applies the optimistic update + rollback. Useful when
+ * you need to compose with other side effects.
+ */
+export function useOptimisticRemove() {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (queryKey: QueryKey, ids: Iterable<string>) => {
+      const idSet = new Set(ids);
+      if (idSet.size === 0) return undefined;
+      const snapshot = queryClient.getQueryData<{ items: Message[]; total: number }>(queryKey);
+      if (snapshot) {
+        queryClient.setQueryData<{ items: Message[]; total: number }>(queryKey, {
+          ...snapshot,
+          items: snapshot.items.filter((m) => !idSet.has(m.id)),
+          total: Math.max(snapshot.total - idSet.size, 0),
+        });
+      }
+      return snapshot; // caller can call setQueryData(queryKey, snapshot) to rollback
+    },
+    [queryClient],
   );
 }
