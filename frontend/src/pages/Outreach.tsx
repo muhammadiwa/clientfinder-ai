@@ -27,6 +27,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Textarea } from "@/components/ui/input";
 import { useApplyOptimistic } from "@/hooks/useOptimisticMessages";
+import { useMessages } from "@/hooks/useOutreach";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
@@ -37,12 +38,10 @@ import {
   deleteMessage,
   generateMessage,
   getOutreachStats,
-  listMessages,
   listTemplates,
   sendMessage,
   submitForApproval,
   type MessageGenerateRequest,
-  type MessageListFilters,
 } from "@/api/outreach";
 import { useProspects } from "@/hooks/useProspects";
 import { getProspectDetail } from "@/api/prospects";
@@ -155,21 +154,41 @@ function formatTimeShort(iso: string | null): string {
 export function OutreachPage() {
   // Tab + list state
   const [tab, setTab] = useState<Tab>("pending_approval");
+  const [filterChannel, setFilterChannel] = useState<FilterChannel>("all");
+  const [filterGrade, setFilterGrade] = useState<FilterGrade>("all");
   const [messages, setMessages] = useState<Message[]>([]);
   // T8.5+++++++ Group 2: optimistic UI helper for bulk
   // actions. Removes the given ids from the local
   // messages state immediately, reverts on error.
   const applyOptimistic = useApplyOptimistic(messages, setMessages);
+  // T8.5+++++++ useQuery refactor: messages fetch
+  // goes through TanStack Query now (cached, refetch,
+  // queryKey-based). We still keep a local `messages`
+  // state for the optimistic mutations to write to.
+  const messagesQuery = useMessages({
+    tab: tab as "all" | "drafts" | "pending_approval" | "sent" | "failed",
+    filterChannel,
+    filterGrade,
+  });
+  // Sync the query data into the local `messages` state
+  // so the optimistic-UI helpers (applyOptimistic) can
+  // mutate it. Effect runs when the query data changes.
+  useEffect(() => {
+    if (messagesQuery.data) {
+      setMessages(messagesQuery.data.items);
+    }
+    if (messagesQuery.isError) {
+      toast.error(t.outreach.failedToLoad);
+    }
+  }, [messagesQuery.data, messagesQuery.isError]);
+  const loading = messagesQuery.isLoading;
   const [stats, setStats] = useState<OutreachStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [prospectsById, setProspectsById] = useState<Record<string, Prospect>>({});
 
   // Filters
-  const [filterChannel, setFilterChannel] = useState<FilterChannel>("all");
-  const [filterGrade, setFilterGrade] = useState<FilterGrade>("all");
   const [search, setSearch] = useState("");
 
   // Bulk selection
@@ -228,48 +247,9 @@ export function OutreachPage() {
     };
   }, [reloadKey]);
 
-  // Messages fetch (proper useEffect, not useMemo)
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setMessages([]);
-    setSelectedIds(new Set());
-
-    const params: MessageListFilters = { page: 1, per_page: 50 };
-
-    if (tab === "pending_approval") params.status = "pending_approval";
-    else if (tab === "drafts") params.status = "draft";
-    else if (tab === "failed") params.status = "failed";
-    else if (tab === "sent") {
-      // "sent" tab includes all post-send states
-      params.status = "sent"; // approximate — backend doesn't support IN
-    }
-    if (filterChannel !== "all") params.channel = filterChannel as MessageChannel;
-    if (filterGrade !== "all") params.prospect_grade = filterGrade;
-
-    listMessages(params)
-      .then(async (data) => {
-        if (cancelled) return;
-        setMessages(data.items);
-        // Hydrate prospect info for each message (look up by id)
-        const ids = [...new Set(data.items.map((m) => m.prospect_id))];
-        const missing = ids.filter((id) => !prospectsById[id]);
-        if (missing.length > 0) {
-          // Load via useProspects cache (already loaded)
-          // For v1 simplicity, just attach what we have
-        }
-      })
-      .catch(() => {
-        if (!cancelled) toast.error(t.outreach.failedToLoad);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, filterChannel, filterGrade, reloadKey]);
+  // Messages fetch moved to useMessages (useOutreach.ts) +
+  // sync effect above. The local `messages` state is
+  // kept for the optimistic-UI helpers to mutate.
 
   // Hydrate prospectsById from useProspects cache + filtered search
   useEffect(() => {
