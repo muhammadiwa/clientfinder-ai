@@ -45,6 +45,7 @@ import {
 import { useProspects } from "@/hooks/useProspects";
 import { getProspectDetail } from "@/api/prospects";
 import { t } from "@/i18n/id";
+import { formatApiError } from "@/lib/formatError";
 import { cn } from "@/lib/utils";
 import type { Message, MessageChannel, OutreachStats, Prospect, Template } from "@/types";
 
@@ -534,7 +535,7 @@ export function OutreachPage() {
       // Auto-switch to Drafts tab + highlight new draft
       setTab("drafts");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Create failed");
+      toast.error(formatApiError(e));
     } finally {
       setComposerLoading(false);
     }
