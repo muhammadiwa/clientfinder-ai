@@ -5,7 +5,7 @@ import * as authApi from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { formatApiError } from "@/lib/formatError";
-import { getT } from "@/i18n/id";
+import { getT } from "@/i18n";
 import type { LoginPayload } from "@/api/auth";
 import type { User } from "@/types";
 

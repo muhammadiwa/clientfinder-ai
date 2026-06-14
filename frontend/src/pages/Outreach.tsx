@@ -45,7 +45,7 @@ import {
 } from "@/api/outreach";
 import { useProspects } from "@/hooks/useProspects";
 import { getProspectDetail } from "@/api/prospects";
-import { useT } from "@/i18n/id";
+import { useT } from "@/i18n";
 import { formatApiError } from "@/lib/formatError";
 import { cn } from "@/lib/utils";
 import type { Message, MessageChannel, OutreachStats, Prospect, Template } from "@/types";

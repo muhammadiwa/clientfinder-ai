@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useProspects } from "@/hooks/useProspects";
-import { useT, getT } from "@/i18n/id";
+import { useT, getT } from "@/i18n";
 import type { ProspectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 

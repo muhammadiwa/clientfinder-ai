@@ -7,7 +7,7 @@ import {
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useT } from "@/i18n/id";
+import { useT } from "@/i18n";
 
 /**
  * Settings / Danger zone section
