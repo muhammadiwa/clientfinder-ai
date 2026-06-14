@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ActivityChart } from "@/components/charts/ActivityChart";
 import { GradeDonut } from "@/components/charts/GradeDonut";
 import { useProspects } from "@/hooks/useProspects";
+import { useOutreachStats } from "@/hooks/useOutreach";
 import { t } from "@/i18n/id";
 import type { Prospect } from "@/types";
 
@@ -87,6 +88,13 @@ function genSparkline(seed: number, trend: "up" | "down" | "stable"): number[] {
 
 export function DashboardPage() {
   const { data, isLoading, isError } = useProspects({ per_page: 100 });
+  // T8.5+++++++ (Dashboard stats wiring): real stats from
+  // the /outreach/stats endpoint. Powers the "Menunggu
+  // tinjauan" KPI card + the Sidebar badge (both
+  // auto-update via the cache).
+  const statsQuery = useOutreachStats();
+  // Future: useAnalyticsOverview(30) for the daily-volume
+  // chart (replaces synthetic sin-based data)
 
   const stats = useMemo(() => {
     const prospects: Prospect[] = data?.items ?? [];
@@ -210,11 +218,19 @@ export function DashboardPage() {
               sparklineColor="text-blue-500"
             />
             <StatCard
+              title="Menunggu tinjauan"
+              value={statsQuery.data?.pending_approval ?? 0}
+              description={t.outreach.pendingReview}
+              icon={<Send className="h-4 w-4" />}
+              sparkline={genSparkline(4, "up")}
+              sparklineColor="text-amber-500"
+            />
+            <StatCard
               title={t.dashboard.won}
               value={stats.won}
               description={t.dashboard.wonDesc.replace("{pct}", String(wonRate))}
               icon={<CheckCircle2 className="h-4 w-4" />}
-              sparkline={genSparkline(4, "up")}
+              sparkline={genSparkline(5, "up")}
               sparklineColor="text-emerald-500"
             />
           </>
