@@ -403,11 +403,16 @@ export function OutreachPage() {
   const handleDeleteConfirm = async () => {
     if (!deleteDialog) return;
     setDeleteLoading(true);
+    // T8.5+++++++ (mirror): optimistic UI for single delete.
+    // Removes the message from the current tab INSTANTLY
+    // (so the dialog feels snappy), reverts on error.
+    const id = deleteDialog.messageId;
     try {
-      await deleteMessage(deleteDialog.messageId);
+      await applyOptimistic([id], async () => {
+        await deleteMessage(id);
+      });
       toast.success(t.outreach.deleted);
       setDeleteDialog(null);
-      reload();
     } catch {
       toast.error(t.outreach.deleteFailed);
     } finally {
