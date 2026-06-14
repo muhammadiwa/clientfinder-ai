@@ -21,11 +21,12 @@ import {
 } from "@/api/analytics";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n/id";
 
 const RANGE_OPTIONS = [
-  { value: 7, label: "Last 7 days" },
-  { value: 30, label: "Last 30 days" },
-  { value: 90, label: "Last 90 days" },
+  { value: 7, label: t.analytics.period7d },
+  { value: 30, label: t.analytics.period30d },
+  { value: 90, label: t.analytics.period90d },
 ];
 
 const GRADE_COLORS: Record<string, string> = {
@@ -93,28 +94,28 @@ export function AnalyticsPage() {
       {/* Top hero — 4 most-important metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <HeroMetric
-          label="Total leads"
+          label={t.analytics.totalLeads}
           value={data.total_leads}
           icon={<Users className="h-4 w-4" />}
           tone="violet"
           sparkline={data.daily_volume.map((v) => v.sent)}
         />
         <HeroMetric
-          label="Messages sent"
+          label={t.analytics.messagesSent}
           value={data.total_messages_sent}
           icon={<Send className="h-4 w-4" />}
           tone="emerald"
           sparkline={data.daily_volume.map((v) => v.sent)}
         />
         <HeroMetric
-          label="Reply rate"
+          label={t.analytics.replyRate}
           value={computeReplyRate(data)}
           icon={<MessageSquare className="h-4 w-4" />}
           tone="sky"
           format="percent"
         />
         <HeroMetric
-          label="Win rate"
+          label={t.analytics.winRate}
           value={data.win_rate}
           icon={<Target className="h-4 w-4" />}
           tone="amber"
@@ -125,8 +126,8 @@ export function AnalyticsPage() {
       {/* === A. Lead Gen === */}
       <Section
         eyebrow="A. Lead generation"
-        title="Discover · quality · speed"
-        description="Volume dari scout + grade distribution + time-to-enrich"
+        title={t.analytics.sendApproveEngage}
+        description={t.analytics.leadGenDesc}
       >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Grade distribution (donut-like with bars) */}
@@ -161,7 +162,7 @@ export function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               {data.leads_by_source.length === 0 ? (
-                <EmptyMini label="No leads yet" />
+                <EmptyMini label={t.analytics.noLeads} />
               ) : (
                 <ul className="space-y-2">
                   {data.leads_by_source.map((s) => (
@@ -235,8 +236,8 @@ export function AnalyticsPage() {
       {/* === B. Outreach === */}
       <Section
         eyebrow="B. Outreach"
-        title="Send · approve · engage"
-        description="Volume per channel + approval funnel + reply rate"
+        title={t.analytics.sendApproveEngage}
+        description={t.analytics.outreachSectionDesc}
       >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Daily volume sparkline */}
@@ -263,7 +264,7 @@ export function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               {data.outreach_by_channel.every((c) => c.sent === 0 && c.replied === 0) ? (
-                <EmptyMini label="No messages sent yet" />
+                <EmptyMini label={t.analytics.noMessagesSent} />
               ) : (
                 <ul className="space-y-3">
                   {data.outreach_by_channel.map((c) => (
@@ -319,8 +320,8 @@ export function AnalyticsPage() {
       {/* === C. Pipeline === */}
       <Section
         eyebrow="C. Pipeline"
-        title="Stage · conversion · velocity"
-        description="Prospect distribution by status + win rate"
+        title={t.analytics.stageConversion}
+        description={t.analytics.pipelineSectionDesc}
       >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Card className="lg:col-span-2">
@@ -332,7 +333,7 @@ export function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               {data.pipeline_by_stage.length === 0 ? (
-                <EmptyMini label="No prospects yet" />
+                <EmptyMini label={t.analytics.noProspects} />
               ) : (
                 <ul className="space-y-2">
                   {data.pipeline_by_stage.map((s) => (
@@ -385,7 +386,7 @@ export function AnalyticsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Avg score (won)</CardTitle>
-                <CardDescription>Proxy for deal quality</CardDescription>
+                <CardDescription>{t.analytics.avgScoreWonDesc}</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold tracking-tight num">
@@ -405,8 +406,8 @@ export function AnalyticsPage() {
       {/* === D. Operational === */}
       <Section
         eyebrow="D. Operational"
-        title="Activity · LLM · success rate"
-        description="Recent activity, LLM usage, scraping success rate"
+        title={t.analytics.activityLlmSuccess}
+        description={t.analytics.operationalDesc}
       >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Card>
@@ -415,11 +416,11 @@ export function AnalyticsPage() {
                 <Activity className="h-3.5 w-3.5" />
                 Recent activity
               </CardTitle>
-              <CardDescription>Action counts (period + last 24h)</CardDescription>
+              <CardDescription>{t.analytics.recentActivity}</CardDescription>
             </CardHeader>
             <CardContent>
               {data.activity_counts.length === 0 ? (
-                <EmptyMini label="No activity yet" />
+                <EmptyMini label={t.analytics.noActivity} />
               ) : (
                 <ul className="space-y-1.5 max-h-72 overflow-y-auto">
                   {data.activity_counts.slice(0, 12).map((a) => (
@@ -451,7 +452,7 @@ export function AnalyticsPage() {
                 <Sparkles className="h-3.5 w-3.5" />
                 LLM usage
               </CardTitle>
-              <CardDescription>Token estimation (1200/call)</CardDescription>
+              <CardDescription>{t.analytics.totalCalls} 1200/{t.analytics.totalCalls.toLowerCase()}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">

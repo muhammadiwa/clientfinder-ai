@@ -44,6 +44,7 @@ import {
 } from "@/api/outreach";
 import { useProspects } from "@/hooks/useProspects";
 import { getProspectDetail } from "@/api/prospects";
+import { t } from "@/i18n/id";
 import { cn } from "@/lib/utils";
 import type { Message, MessageChannel, OutreachStats, Prospect, Template } from "@/types";
 
@@ -248,7 +249,7 @@ export function OutreachPage() {
         }
       })
       .catch(() => {
-        if (!cancelled) toast.error("Failed to load messages");
+        if (!cancelled) toast.error(t.outreach.failedToLoad);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -327,10 +328,10 @@ export function OutreachPage() {
     setBusyId(id);
     try {
       await approveMessage(id, { approve: true });
-      toast.success("Approved");
+      toast.success(t.outreach.approvedToast);
       reload();
     } catch {
-      toast.error("Approval failed");
+      toast.error(t.outreach.approvalFailed);
     } finally {
       setBusyId(null);
     }
@@ -348,11 +349,11 @@ export function OutreachPage() {
         approve: false,
         reason: rejectDialog.reason || undefined,
       });
-      toast.success("Rejected");
+      toast.success(t.outreach.rejectedToast);
       setRejectDialog(null);
       reload();
     } catch {
-      toast.error("Reject failed");
+      toast.error(t.outreach.rejectFailed);
     } finally {
       setRejectLoading(false);
     }
@@ -362,10 +363,10 @@ export function OutreachPage() {
     setBusyId(id);
     try {
       await sendMessage(id);
-      toast.success("Sent (check Sent tab for status)");
+      toast.success(t.outreach.sentToast);
       reload();
     } catch {
-      toast.error("Send failed");
+      toast.error(t.outreach.sendFailed);
     } finally {
       setBusyId(null);
     }
@@ -375,10 +376,10 @@ export function OutreachPage() {
     setBusyId(id);
     try {
       await submitForApproval(id);
-      toast.success("Submitted for approval");
+      toast.success(t.outreach.submitted);
       reload();
     } catch {
-      toast.error("Submit failed");
+      toast.error(t.outreach.submitFailed);
     } finally {
       setBusyId(null);
     }
@@ -393,11 +394,11 @@ export function OutreachPage() {
     setDeleteLoading(true);
     try {
       await deleteMessage(deleteDialog.messageId);
-      toast.success("Deleted");
+      toast.success(t.outreach.deleted);
       setDeleteDialog(null);
       reload();
     } catch {
-      toast.error("Delete failed (sent messages cannot be deleted)");
+      toast.error(t.outreach.deleteFailed);
     } finally {
       setDeleteLoading(false);
     }
@@ -487,7 +488,7 @@ export function OutreachPage() {
 
   const handleGenerate = async () => {
     if (!composerProspectId || !composerHookId) {
-      toast.error("Pick a prospect + hook first");
+      toast.error(t.outreach.pickProspectHook);
       return;
     }
     setComposerLoading(true);
@@ -512,7 +513,7 @@ export function OutreachPage() {
 
   const handleCreateDraft = async () => {
     if (!composerGenerated || !composerProspectId || !composerHookId) {
-      toast.error("Generate first");
+      toast.error(t.outreach.generateFirst);
       return;
     }
     setComposerLoading(true);
@@ -542,9 +543,9 @@ export function OutreachPage() {
   const handleCopyBody = async () => {
     try {
       await navigator.clipboard.writeText(composerBody);
-      toast.success("Copied");
+      toast.success(t.toast.copied);
     } catch {
-      toast.error("Copy failed");
+      toast.error(t.outreach.copyFailed);
     }
   };
 
@@ -630,9 +631,9 @@ export function OutreachPage() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">
-            Outreach
+            {t.nav.outreach}
           </p>
-          <h1 className="text-3xl font-bold tracking-tight">R10 review queue</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t.outreach.title} — {t.outreach.pendingReview}</h1>
           <p className="text-muted-foreground mt-1.5 text-sm">
             Approve, edit, atau tolak pesan sebelum dikirim
           </p>
@@ -642,7 +643,7 @@ export function OutreachPage() {
       {/* Hero stats (4 cards) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Pending review"
+          label={t.outreach.pendingReview}
           value={stats?.pending_approval ?? 0}
           icon={<Inbox className="h-4 w-4" />}
           tone="amber"
@@ -650,7 +651,7 @@ export function OutreachPage() {
           onClick={() => setTab("pending_approval")}
         />
         <StatCard
-          label="Sent (total)"
+          label={t.outreach.sentTotal}
           value={
             stats
               ? stats.sent +
@@ -666,13 +667,13 @@ export function OutreachPage() {
           onClick={() => setTab("sent")}
         />
         <StatCard
-          label="Replied"
+          label={t.outreach.replied}
           value={stats?.replied ?? 0}
           icon={<MessageSquare className="h-4 w-4" />}
           tone="sky"
         />
         <StatCard
-          label="Failed"
+          label={t.outreach.failed}
           value={(stats?.failed ?? 0) + (stats?.bounced ?? 0)}
           icon={<XCircle className="h-4 w-4" />}
           tone="rose"
@@ -727,7 +728,7 @@ export function OutreachPage() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari subject, body, atau company…"
+              placeholder={t.outreach.searchPlaceholder}
               className="w-full h-9 pl-8 pr-3 text-sm rounded-md border border-input bg-background"
             />
           </div>
@@ -742,8 +743,8 @@ export function OutreachPage() {
           <ChipGroup
             options={[
               { value: "all", label: "All" },
-              { value: "email", label: "Email" },
-              { value: "whatsapp", label: "WhatsApp" },
+              { value: "email", label: t.outreach.channelEmail },
+              { value: "whatsapp", label: t.outreach.channelWhatsapp },
             ]}
             value={filterChannel}
             onChange={(v) => setFilterChannel(v as FilterChannel)}
@@ -848,8 +849,8 @@ export function OutreachPage() {
                   options={composerProspectOptions}
                   value={composerProspectId}
                   onChange={setComposerProspectId}
-                  placeholder="Cari prospect…"
-                  emptyMessage="No prospects match"
+                  placeholder={t.outreach.searchProspectPlaceholder}
+                  emptyMessage={t.outreach.noProspectsMatch}
                   size="sm"
                 />
               </div>
@@ -934,8 +935,8 @@ export function OutreachPage() {
                     options={templateOptions}
                     value={composerTemplateId}
                     onChange={setComposerTemplateId}
-                    placeholder="Use AI by default"
-                    emptyMessage="No templates"
+                    placeholder={t.outreach.templatePlaceholder}
+                    emptyMessage={t.outreach.noTemplates}
                     size="sm"
                   />
                 </div>
@@ -1079,10 +1080,10 @@ export function OutreachPage() {
       <ConfirmDialog
         open={rejectDialog !== null}
         onOpenChange={(o) => !o && setRejectDialog(null)}
-        title="Reject this message?"
-        description="The message will be marked as rejected and won't be sent. Optionally provide a reason for the team."
+        title={t.outreach.rejectTitle}
+        description={t.outreach.rejectDescription}
         input={{
-          label: "Reason (optional)",
+          label: t.outreach.reasonOptional,
           placeholder: "Too salesy, wrong tone, etc.",
           value: rejectDialog?.reason ?? "",
           onChange: (v) =>
