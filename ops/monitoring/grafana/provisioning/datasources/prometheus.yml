@@ -1,0 +1,16 @@
+---
+# Grafana provisioning — auto-loads Prometheus datasource + dashboards
+# T8.5 Group 2.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://cf-prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: POST
