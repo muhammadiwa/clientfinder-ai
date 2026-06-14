@@ -73,7 +73,14 @@ export interface ProspectListResponse {
 
 // --- T4 Scout module ---
 
-export type ScrapingSource = "google" | "maps" | "twitter" | "threads";
+export type ScrapingSource =
+  | "google"
+  | "google_places"
+  | "maps"
+  | "yelp"
+  | "tokopedia"
+  | "twitter"
+  | "threads";
 export type ScrapingStatus = "pending" | "running" | "completed" | "failed";
 
 export interface ScrapingJob {

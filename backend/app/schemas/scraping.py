@@ -7,7 +7,15 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-ScrapingSource = Literal["google", "maps", "twitter", "threads"]
+ScrapingSource = Literal[
+    "google",
+    "google_places",   # Sprint 3C — Google Places API
+    "maps",
+    "yelp",            # Sprint 3C — Yelp Fusion API
+    "tokopedia",       # Sprint 3C — Playwright
+    "twitter",
+    "threads",
+]
 ScrapingStatus = Literal["pending", "running", "completed", "failed"]
 
 
