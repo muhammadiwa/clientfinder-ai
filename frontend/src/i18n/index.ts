@@ -20,33 +20,48 @@ import { useLocaleStore } from "@/stores/locale";
 import id from "./id";
 import en from "./en";
 
-const STRINGS = { id, en } as const;
-type Strings = typeof id;
+type LocalePack = Record<string, unknown>;
 
 /**
- * Type-erased locale pack. We cast to a structural
- * shape so the Proxy can serve any key — the runtime
- * fallback chain (locale → id) handles missing keys.
+ * Helper to unwrap a locale module (handles the circular
+ * import case where `id` may be a partial module namespace
+ * rather than the default export). The default export
+ * is what we actually want.
  */
-type LocalePack = Record<string, unknown>;
+function asPack(mod: unknown): LocalePack {
+  const m = mod as { default?: unknown };
+  if (m && typeof m === "object" && m.default && typeof m.default === "object") {
+    return m.default as LocalePack;
+  }
+  return (mod as LocalePack) ?? {};
+}
 
 /**
  * Proxy-based t — looks up the current locale from the
  * zustand store on every property access. Falls back to
  * 'id' if the requested key is missing in the active
  * locale (graceful degradation — no broken UI).
+ *
+ * IMPORTANT: no top-level `const STRINGS = ...` here
+ * because of the circular import (id.ts re-exports from
+ * this file, so when index.ts loads, `id` is still a
+ * partial module and any const initialization that
+ * references it would throw a TDZ error when later
+ * accessed). Instead, the Proxy reads `id` and `en`
+ * directly at access time.
  */
 export const t = new Proxy(id, {
   get(_target, prop: string) {
     const locale = useLocaleStore.getState().locale;
-    const pack: LocalePack = (STRINGS[locale] as unknown as LocalePack)
-      ?? (id as unknown as LocalePack);
-    return pack[prop] ?? (id as unknown as LocalePack)[prop];
+    const active = locale === "en" ? en : id;
+    const activePack = asPack(active);
+    const fallbackPack = asPack(id);
+    return activePack[prop] ?? fallbackPack[prop];
   },
-}) as unknown as Strings;
+}) as unknown as typeof id;
 
 /** Hook version (for components that need to re-render on locale change) */
-export function useT(): Strings {
+export function useT(): typeof id {
   useLocaleStore((s) => s.locale); // subscribe to changes
   return t;
 }

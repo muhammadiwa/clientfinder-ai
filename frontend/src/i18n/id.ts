@@ -497,6 +497,7 @@ export default STRINGS;
 
 // Re-export from the locale-aware index so all existing
 // `import { t } from "@/i18n/id"` call sites keep working
-// (T8.5++++++: language toggle)
+// (T8.5++++++: language toggle). The t here is a Proxy
+// that delegates to the current locale's strings.
 export { t, useT, useLocaleStore } from "./index";
 export type { Locale } from "./index";
