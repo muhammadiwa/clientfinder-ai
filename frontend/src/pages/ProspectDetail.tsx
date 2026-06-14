@@ -72,7 +72,7 @@ export function ProspectDetailPage() {
       const data = await getProspectDetail(id);
       setDetail(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load detail");
+      setError(e instanceof Error ? e.message : t.prospectDetail.failedToLoadDetail);
     } finally {
       setLoading(false);
     }
@@ -94,10 +94,10 @@ export function ProspectDetailPage() {
         );
         await fetchDetail();
       } else {
-        toast.error(result.error ?? "Re-analyze failed");
+        toast.error(result.error ?? t.prospectDetail.reAnalyzeFailed);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Re-analyze failed");
+      toast.error(e instanceof Error ? e.message : t.prospectDetail.reAnalyzeFailed);
     } finally {
       setAnalyzing(false);
     }
@@ -114,10 +114,10 @@ export function ProspectDetailPage() {
         );
         await fetchDetail();
       } else {
-        toast.error(result.error ?? "Hook generation failed");
+        toast.error(result.error ?? t.prospectDetail.hookGenFailed);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Hook generation failed");
+      toast.error(e instanceof Error ? e.message : t.prospectDetail.hookGenFailed);
     } finally {
       setGeneratingHooks(false);
     }
@@ -127,10 +127,10 @@ export function ProspectDetailPage() {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedHookId(hookId);
-      toast.success("Hook copied to clipboard");
+      toast.success(t.prospectDetail.hookCopied);
       setTimeout(() => setCopiedHookId(null), 2000);
     } catch {
-      toast.error("Failed to copy");
+      toast.error(t.prospectDetail.copyFailed);
     }
   };
 
@@ -301,33 +301,33 @@ export function ProspectDetailPage() {
               factors={[
                 {
                   key: "pain_severity",
-                  label: "Pain severity",
+                  label: t.prospectDetail.factors.painSeverity,
                   value: lead_score!.pain_severity,
-                  description: "Average severity × # of pain points",
+                  description: t.prospectDetail.factors.painSeverityDesc,
                 },
                 {
                   key: "solution_fit",
-                  label: "Solution fit",
+                  label: t.prospectDetail.factors.solutionFit,
                   value: lead_score!.solution_fit,
-                  description: "Industry + matched services",
+                  description: t.prospectDetail.factors.solutionFitDesc,
                 },
                 {
                   key: "signal_strength",
-                  label: "Signal strength",
+                  label: t.prospectDetail.factors.signalStrength,
                   value: lead_score!.signal_strength,
-                  description: "Signals + pain density",
+                  description: t.prospectDetail.factors.signalStrengthDesc,
                 },
                 {
                   key: "budget_indicator",
-                  label: "Budget indicator",
+                  label: t.prospectDetail.factors.budgetIndicator,
                   value: lead_score!.budget_indicator,
-                  description: "Industry + location proxy",
+                  description: t.prospectDetail.factors.budgetIndicatorDesc,
                 },
                 {
                   key: "timing_urgency",
-                  label: "Timing urgency",
+                  label: t.prospectDetail.factors.timingUrgency,
                   value: lead_score!.timing_urgency,
-                  description: "Freshness (decay after 90d)",
+                  description: t.prospectDetail.factors.timingUrgencyDesc,
                 },
               ]}
               total={lead_score!.total_score}
@@ -335,7 +335,7 @@ export function ProspectDetailPage() {
             />
             {lead_score!.reasoning && (
               <div className="mt-4 p-3 rounded-lg bg-muted/30 text-xs text-muted-foreground leading-relaxed">
-                <p className="font-medium text-foreground mb-1">Reasoning</p>
+                <p className="font-medium text-foreground mb-1">{t.prospectDetail.reasoning}</p>
                 {lead_score!.reasoning}
               </div>
             )}
@@ -381,17 +381,17 @@ export function ProspectDetailPage() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <TechField
-                    label="CMS"
+                    label={t.prospectDetail.tech.cms}
                     value={tech_stack.cms}
                     fallback="—"
                   />
                   <TechField
-                    label="Framework"
+                    label={t.prospectDetail.tech.framework}
                     value={tech_stack.framework}
                     fallback="—"
                   />
                   <TechField
-                    label="Hosting"
+                    label={t.prospectDetail.tech.hosting}
                     value={tech_stack.hosting_provider}
                     fallback="—"
                   />
@@ -484,8 +484,8 @@ export function ProspectDetailPage() {
             {pain_points.length === 0 ? (
               <EmptyState
                 icon={<CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-                title="No pain points detected"
-                description="Either the prospect is already digital-first, or analyst hasn't run yet"
+                title={t.prospectDetail.noPainPoints}
+                description={t.prospectDetail.noPainPointsDesc}
                 action={
                   <Button
                     variant="outline"
@@ -563,7 +563,7 @@ export function ProspectDetailPage() {
               ) : (
                 <Sparkles className="h-4 w-4" />
               )}
-              {hooks.length === 0 ? "Generate hooks" : "Regenerate"}
+              {hooks.length === 0 ? t.prospectDetail.generateHooks : t.prospectDetail.regenerate}
             </Button>
           </div>
         </CardHeader>
@@ -571,8 +571,8 @@ export function ProspectDetailPage() {
           {hooks.length === 0 ? (
             <EmptyState
               icon={<MessageSquare className="h-5 w-5" />}
-              title="No hooks yet"
-              description="Click 'Generate hooks' to get 3 personalized outreach angles"
+              title={t.prospectDetail.noHooksYet}
+              description={t.prospectDetail.noHooksYetDesc}
             />
           ) : (
             <ul className="space-y-3">
@@ -608,7 +608,7 @@ export function ProspectDetailPage() {
                               "text-xs font-medium num tabular-nums",
                               getConfidenceColor(hook.confidence),
                             )}
-                            title="Confidence score"
+                            title={t.prospectDetail.confidenceScore}
                           >
                             {Math.round(hook.confidence * 100)}% confident
                           </span>
