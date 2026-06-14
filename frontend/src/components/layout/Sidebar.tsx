@@ -6,6 +6,7 @@ import {
   Sparkles,
   Send,
   BarChart3,
+  ListOrdered,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getT } from "@/i18n";
@@ -17,6 +18,7 @@ const navItems = [
   { to: "/prospects", label: getT().nav.prospects, icon: Users },
   { to: "/pipeline", label: getT().nav.pipeline, icon: KanbanSquare },
   { to: "/outreach", label: getT().nav.outreach, icon: Send, badge: "pending" as const },
+  { to: "/sequences", label: getT().nav.sequences, icon: ListOrdered },
   { to: "/analytics", label: getT().nav.analytics, icon: BarChart3 },
   // Settings moved to Topbar avatar dropdown (PR #23 audit fix)
   // — single source of truth, less sidebar clutter

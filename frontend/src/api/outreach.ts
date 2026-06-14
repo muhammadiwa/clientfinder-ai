@@ -225,3 +225,95 @@ export async function updateSequence(
 export async function deleteSequence(id: string): Promise<void> {
   await api.delete(`/sequences/${id}`);
 }
+
+// --- Enrollments (Sprint 3A) ---
+
+export interface EnrollmentItem {
+  id: string;
+  prospect_id: string;
+  sequence_id: string;
+  current_step: number;
+  status: "active" | "paused" | "completed" | "stopped";
+  next_action_at: string | null;
+  started_at: string;
+  completed_at: string | null;
+  stopped_reason: string | null;
+}
+
+export interface EnrollmentListResponse {
+  items: EnrollmentItem[];
+  total: number;
+}
+
+export async function listEnrollments(
+  params: {
+    status_filter?: string;
+    sequence_id?: string;
+    prospect_id?: string;
+    limit?: number;
+  } = {},
+): Promise<EnrollmentListResponse> {
+  const { data } = await api.get<EnrollmentListResponse>(
+    "/sequences/enrollments",
+    { params },
+  );
+  return data;
+}
+
+export async function pauseEnrollment(
+  enrollmentId: string,
+): Promise<{ ok: boolean; status?: string; error?: string }> {
+  const { data } = await api.post<{ ok: boolean; status?: string; error?: string }>(
+    `/sequences/enrollments/${enrollmentId}/pause`,
+  );
+  return data;
+}
+
+export async function resumeEnrollment(
+  enrollmentId: string,
+): Promise<{ ok: boolean; status?: string; error?: string }> {
+  const { data } = await api.post<{ ok: boolean; status?: string; error?: string }>(
+    `/sequences/enrollments/${enrollmentId}/resume`,
+  );
+  return data;
+}
+
+export async function stopEnrollment(
+  enrollmentId: string,
+  reason: string = "manual_stop",
+): Promise<{ ok: boolean; status?: string; error?: string }> {
+  const { data } = await api.post<{ ok: boolean; status?: string; error?: string }>(
+    `/sequences/enrollments/${enrollmentId}/stop`,
+    null,
+    { params: { reason } },
+  );
+  return data;
+}
+
+export async function triggerDripRunner(): Promise<{
+  ok: boolean;
+  task_id: string;
+  status: string;
+}> {
+  const { data } = await api.post<{
+    ok: boolean;
+    task_id: string;
+    status: string;
+  }>("/sequences/drip-runner/run");
+  return data;
+}
+
+export async function enrollProspectInSequence(
+  prospectId: string,
+  sequenceId: string,
+): Promise<{ ok: boolean; enrollment_id: string; next_action_at: string }> {
+  const { data } = await api.post<{
+    ok: boolean;
+    enrollment_id: string;
+    next_action_at: string;
+  }>("/sequences/enroll", {
+    prospect_id: prospectId,
+    sequence_id: sequenceId,
+  });
+  return data;
+}
