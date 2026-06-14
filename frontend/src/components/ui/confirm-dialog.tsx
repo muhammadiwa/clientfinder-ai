@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label, Textarea } from "@/components/ui/input";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/utils";
-import { useT, getT } from "@/i18n/id";
+import { useT, getT } from "@/i18n";
 
 export interface ConfirmDialogProps {
   open: boolean;

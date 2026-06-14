@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GradePill } from "@/components/ui/status-pill";
 import { useProspects } from "@/hooks/useProspects";
-import { useT, getT } from "@/i18n/id";
+import { useT, getT } from "@/i18n";
 import type { Prospect, ProspectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 

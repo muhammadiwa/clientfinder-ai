@@ -21,7 +21,7 @@ import {
 } from "@/api/analytics";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { useT, getT } from "@/i18n/id";
+import { useT, getT } from "@/i18n";
 
 const RANGE_OPTIONS = [
   { value: 7, label: getT().analytics.period7d },

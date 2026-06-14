@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useT } from "@/i18n/id";
+import { useT } from "@/i18n";
 
 export function NotFoundPage() {
   const t = useT();

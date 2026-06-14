@@ -38,7 +38,7 @@ import {
   type ScrapingPreset,
 } from "@/api/scouting";
 import { useProspects } from "@/hooks/useProspects";
-import { getT, useT } from "@/i18n/id";
+import { getT, useT } from "@/i18n";
 import { formatApiError, formatFieldError } from "@/lib/formatError";
 import {
   analyzeProspect,

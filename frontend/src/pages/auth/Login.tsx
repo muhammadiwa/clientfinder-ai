@@ -14,7 +14,7 @@ import {
 import { FormField, Input } from "@/components/ui/input";
 import { useLogin } from "@/hooks/useAuth";
 import { formatFieldError } from "@/lib/formatError";
-import { useT } from "@/i18n/id";
+import { useT } from "@/i18n";
 
 export function LoginPage() {
   const t = useT();
