@@ -312,8 +312,7 @@ async def classify_lead_endpoint(
     automatically when it detects an ambiguous industry.
     """
     from sqlalchemy import select
-    from app.models.prospect import Prospect, TechStack
-    from app.models.lead import Signal, PainPoint
+    from app.models.prospect import PainPoint, Prospect, Signal, TechStack
     from app.services.analyzer.lead_classifier import (
         classify_tier,
         classify_industry_deep,

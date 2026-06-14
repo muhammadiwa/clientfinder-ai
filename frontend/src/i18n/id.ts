@@ -351,6 +351,18 @@ const STRINGS = {
     closingProbability: "Peluang closing",
     closingPercent: "%",
     ownerUnknown: "Belum diketahui",
+    // Sprint 3B — tier classification
+    tier: {
+      smb: "SMB",
+      mid: "Mid",
+      enterprise: "Enterprise",
+      unknown: "?",
+      confidence: "Keyakinan",
+    },
+    // Sprint 3B — classify button
+    classify: "Klasifikasikan",
+    classifyTitle: "Klasifikasi tier + industri spesifik (T9.0 / Sprint 3B)",
+    classifyFailed: "Klasifikasi gagal",
     // Sprint 3A — multi-channel outreach enrollments
     enrollments: {
       section: "Sequence enrollments",

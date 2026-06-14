@@ -29,14 +29,18 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusPill, GradePill } from "@/components/ui/status-pill";
+import { TierBadge } from "@/components/TierBadge";
 import { ScoreBreakdownChart } from "@/components/charts/ScoreBreakdown";
 import { SignalList } from "@/components/SignalList";
 import { EnrollmentPanel } from "@/components/EnrollmentPanel";
 import {
+  classifyProspect,
   enrichProspect,
   getProspectDetail,
   refreshContact,
+  type ClassifyResult,
   type ProspectDetailResponse,
+  type Tier,
 } from "@/api/prospects";
 import { generateHooks } from "@/services/ai/ai-analyzer";
 import { cn } from "@/lib/utils";
@@ -67,6 +71,10 @@ export function ProspectDetailPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingHooks, setGeneratingHooks] = useState(false);
   const [refreshingContact, setRefreshingContact] = useState(false);
+  const [classifying, setClassifying] = useState(false);
+  const [classifyResult, setClassifyResult] = useState<ClassifyResult | null>(
+    null,
+  );
   const [copiedHookId, setCopiedHookId] = useState<string | null>(null);
 
   const fetchDetail = async () => {
@@ -121,10 +129,29 @@ export function ProspectDetailPage() {
       } else {
         toast.error(result.error ?? t.prospectDetail.hookGenFailed);
       }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t.prospectDetail.hookGenFailed);
     } finally {
       setGeneratingHooks(false);
+    }
+  };
+
+  // Sprint 3B — tier + industry classification
+  const handleClassify = async () => {
+    if (!id) return;
+    setClassifying(true);
+    try {
+      const result = await classifyProspect(id);
+      setClassifyResult(result);
+      toast.success(
+        `Tier: ${result.tier} (${Math.round(result.tier_confidence * 100)}% confident)`,
+      );
+      // Re-fetch to get the updated description (with industry prefix)
+      await fetchDetail();
+    } catch (e: unknown) {
+      toast.error(
+        (e as Error)?.message ?? t.prospectDetail.classifyFailed,
+      );
+    } finally {
+      setClassifying(false);
     }
   };
 
@@ -221,6 +248,21 @@ export function ProspectDetailPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={handleClassify}
+            disabled={classifying}
+            data-testid="classify-button"
+            title={t.prospectDetail.classifyTitle ?? "Sprint 3B: tier + industry"}
+          >
+            {classifying ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Building2 className="h-4 w-4" />
+            )}
+            {t.prospectDetail.classify}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleReanalyze}
             disabled={analyzing}
           >
@@ -252,6 +294,10 @@ export function ProspectDetailPage() {
                 {prospect.quality_grade && (
                   <GradePill grade={prospect.quality_grade} />
                 )}
+                <TierBadge
+                  tier={(classifyResult?.tier ?? null) as Tier | null}
+                  confidence={classifyResult?.tier_confidence}
+                />
                 <StatusPill status={prospect.status} />
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
@@ -259,6 +305,15 @@ export function ProspectDetailPage() {
                   <span className="inline-flex items-center gap-1.5">
                     <Tag className="h-3.5 w-3.5" />
                     <span className="capitalize">{prospect.industry}</span>
+                    {classifyResult?.industry_specific &&
+                      classifyResult.industry_specific !== "unknown" && (
+                      <span
+                        data-testid="industry-specific"
+                        className="ml-1 text-xs text-violet-600 dark:text-violet-400"
+                      >
+                        → {classifyResult.industry_specific}
+                      </span>
+                    )}
                   </span>
                 )}
                 {prospect.location_city && (

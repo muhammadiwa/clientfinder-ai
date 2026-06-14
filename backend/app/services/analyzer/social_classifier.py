@@ -133,7 +133,11 @@ async def classify_social_signals(
         logger.warning("Social signal LLM call failed: %s", e)
         return []
 
-    parsed = safe_parse_json(result)
+    # LLMResult.content is the string; safe_parse_json expects str
+    content = getattr(result, "content", result) if result else ""
+    if not isinstance(content, str):
+        content = str(content)
+    parsed = safe_parse_json(content)
     if parsed is None:
         logger.warning("Social signal LLM returned non-JSON; skipping")
         return []

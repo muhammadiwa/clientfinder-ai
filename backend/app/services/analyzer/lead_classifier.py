@@ -268,7 +268,11 @@ async def classify_industry_deep(
             "rationale": f"LLM call failed: {e!s}",
         }
 
-    parsed = safe_parse_json(result)
+    # LLMResult.content is the string; safe_parse_json expects str
+    content = getattr(result, "content", result) if result else ""
+    if not isinstance(content, str):
+        content = str(content)
+    parsed = safe_parse_json(content)
     if not isinstance(parsed, dict):
         return {
             "industry_specific": current_industry or "unknown",
