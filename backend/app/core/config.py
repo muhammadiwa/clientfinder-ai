@@ -160,6 +160,14 @@ class Settings(BaseSettings):
     scout_yelp_enabled: bool = False
     scout_yelp_max_per_query: int = 30
 
+    # Sprint 3C sub-task 2 — Tokopedia seller search (Playwright)
+    # No public API; uses browser automation. Soft-fail by default —
+    # operator opts in by setting scout_tokopedia_enabled=true.
+    scout_tokopedia_enabled: bool = False
+    scout_tokopedia_max_per_query: int = 20
+    scout_tokopedia_headless: bool = True
+    scout_tokopedia_page_timeout_s: int = 20
+
     # Scout enrichment (T8.6) — homepage fetch for phone/email/address/socials
     scout_enrichment_enabled: bool = True
     scout_enrichment_page_timeout_s: int = 12

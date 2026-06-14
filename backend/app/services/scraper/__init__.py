@@ -17,6 +17,7 @@ from app.services.scraper.google import GoogleSearchScraper
 from app.services.scraper.google_places import GooglePlacesScraper
 from app.services.scraper.maps import GoogleMapsScraper
 from app.services.scraper.threads import ThreadsScraper
+from app.services.scraper.tokopedia import TokopediaScraper
 from app.services.scraper.twitter import TwitterScraper
 from app.services.scraper.yelp import YelpScraper
 
@@ -30,6 +31,7 @@ _SCRAPERS: dict[str, type[BaseScraper]] = {
     "maps": GoogleMapsScraper,
     "twitter": TwitterScraper,
     "threads": ThreadsScraper,
+    "tokopedia": TokopediaScraper,  # Sprint 3C
     "yelp": YelpScraper,  # Sprint 3C
 }
 
