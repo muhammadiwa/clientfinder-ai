@@ -212,3 +212,172 @@ async def enroll_prospect(
         "enrollment_id": str(enrollment.id),
         "next_action_at": next_action_at.isoformat(),
     }
+
+
+# --- Enrollment control (T6.2 / Sprint 3A) ---
+
+
+@router.post("/enrollments/{enrollment_id}/pause")
+async def pause_enrollment(
+    enrollment_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+) -> dict:
+    """Pause an active enrollment. Operator can resume later."""
+    enr = (
+        await db.execute(
+            select(SequenceEnrollment).where(
+                SequenceEnrollment.id == enrollment_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not enr:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Enrollment {enrollment_id} not found",
+        )
+    if enr.status != "active":
+        return {"ok": False, "error": f"Cannot pause from status {enr.status}"}
+    enr.status = "paused"
+    db.add(
+        Activity(
+            prospect_id=enr.prospect_id,
+            user_id=current_user.id,
+            action="enrollment_paused",
+            details={"enrollment_id": str(enrollment_id)},
+        )
+    )
+    await db.commit()
+    return {"ok": True, "status": "paused"}
+
+
+@router.post("/enrollments/{enrollment_id}/resume")
+async def resume_enrollment(
+    enrollment_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+) -> dict:
+    """Resume a paused enrollment. next_action_at reset to now."""
+    enr = (
+        await db.execute(
+            select(SequenceEnrollment).where(
+                SequenceEnrollment.id == enrollment_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not enr:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Enrollment {enrollment_id} not found",
+        )
+    if enr.status != "paused":
+        return {"ok": False, "error": f"Cannot resume from status {enr.status}"}
+    enr.status = "active"
+    # Set next_action_at to now so the drip runner picks it up
+    from datetime import datetime, timezone
+    enr.next_action_at = datetime.now(timezone.utc)
+    db.add(
+        Activity(
+            prospect_id=enr.prospect_id,
+            user_id=current_user.id,
+            action="enrollment_resumed",
+            details={"enrollment_id": str(enrollment_id)},
+        )
+    )
+    await db.commit()
+    return {"ok": True, "status": "active"}
+
+
+@router.post("/enrollments/{enrollment_id}/stop")
+async def stop_enrollment(
+    enrollment_id: UUID,
+    current_user: CurrentUser,
+    db: DB,
+    reason: str = "manual_stop",
+) -> dict:
+    """Stop an enrollment. Cannot be resumed — must re-enroll."""
+    enr = (
+        await db.execute(
+            select(SequenceEnrollment).where(
+                SequenceEnrollment.id == enrollment_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not enr:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Enrollment {enrollment_id} not found",
+        )
+    if enr.status in ("completed", "stopped"):
+        return {"ok": False, "error": f"Already {enr.status}"}
+    enr.status = "stopped"
+    enr.stopped_reason = reason
+    enr.completed_at = datetime.now(timezone.utc)
+    db.add(
+        Activity(
+            prospect_id=enr.prospect_id,
+            user_id=current_user.id,
+            action="enrollment_stopped",
+            details={"enrollment_id": str(enrollment_id), "reason": reason},
+        )
+    )
+    await db.commit()
+    return {"ok": True, "status": "stopped"}
+
+
+@router.get("/enrollments")
+async def list_enrollments(
+    current_user: CurrentUser,
+    db: DB,
+    status_filter: str | None = None,
+    sequence_id: UUID | None = None,
+    limit: int = 50,
+) -> dict:
+    """List enrollments, optionally filtered by status / sequence."""
+    q = select(SequenceEnrollment).order_by(
+        SequenceEnrollment.started_at.desc()
+    )
+    if status_filter:
+        q = q.where(SequenceEnrollment.status == status_filter)
+    if sequence_id:
+        q = q.where(SequenceEnrollment.sequence_id == sequence_id)
+    q = q.limit(min(limit, 200))
+    items = (await db.execute(q)).scalars().all()
+    return {
+        "items": [
+            {
+                "id": str(e.id),
+                "prospect_id": str(e.prospect_id),
+                "sequence_id": str(e.sequence_id),
+                "current_step": e.current_step,
+                "status": e.status,
+                "next_action_at": (
+                    e.next_action_at.isoformat() if e.next_action_at else None
+                ),
+                "started_at": e.started_at.isoformat(),
+                "completed_at": (
+                    e.completed_at.isoformat() if e.completed_at else None
+                ),
+                "stopped_reason": e.stopped_reason,
+            }
+            for e in items
+        ],
+        "total": len(items),
+    }
+
+
+# --- Manual drip trigger (for testing) ---
+
+
+@router.post("/drip-runner/run")
+async def trigger_drip_runner(
+    current_user: CurrentUser,
+) -> dict:
+    """Manually trigger the drip runner task. Useful for testing."""
+    from app.tasks.drip_runner import drip_runner_task
+    result = drip_runner_task.delay()
+    return {
+        "ok": True,
+        "task_id": result.id,
+        "status": "queued",
+    }
