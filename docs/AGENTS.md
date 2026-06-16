@@ -773,6 +773,8 @@ The Scout pipeline uses **3 active sources** (`backend/app/services/scraper/__in
 | `twitter` | Twikit + cookies | Yes | Zero results without cookies |
 | `threads` | Playwright + cookies | Yes | Zero results without cookies |
 
+**Note on `twitter` vs `threads`** (Sprint 4.1 correction): they share the `SocialPost` output dataclass, but use **different transports** — `twitter` uses Twikit (Python lib for Twitter API), `threads` uses Playwright (browser automation for Threads.net). They also have different cookie schemas: `twitter` uses `auth_token` + `ct0`, `threads` uses `sessionid` (Meta convention). Calling them "the same code path" is incorrect — they diverge at the transport + cookie layer and share only the output schema. A future "improve social scrapers" PR should NOT try to share a base class; the data shapes are aligned but the capture mechanisms are intentionally separate.
+
 **Deactivated sources (4)**: `google` (SearXNG, was 67% noise per the 2026-06-14 audit), `google_places`, `yelp`, `tokopedia`. **Code kept** with `DEPRECATED 2026-06-14` banner. Re-enable is one config flip (registry + Literal + SOURCES + kill switch). This is the "deactivate-not-delete" pattern.
 
 ## Auto-enrich is OFF by default

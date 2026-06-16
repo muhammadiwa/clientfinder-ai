@@ -108,15 +108,14 @@ export function ScoutRunResultsPage() {
     // a soft "cancelled" flag; the API client doesn't take
     // an AbortSignal yet.)
     let cancelled = false;
-    const token = localStorage.getItem("access_token") || "";
-    // M4: empty token → redirect to login instead of fetching
-    if (!token) {
-      navigate("/login", { replace: true });
-      return;
-    }
+    // Sprint 4.1 followup: removed `localStorage.getItem("access_token")`.
+    // The shared `api` axios instance handles auth via its interceptor
+    // (including refresh-on-401). This was the C2 finding from the
+    // holistic Sprint 4 review — three different auth patterns for
+    // the same JWT, in the same sprint.
     setLoading(true);
     setError(null);
-    getScoutRunResults(runId, page, 25, token)
+    getScoutRunResults(runId, page, 25)
       .then((d) => {
         if (cancelled) return;
         setData(d);
@@ -137,7 +136,7 @@ export function ScoutRunResultsPage() {
   if (!runId) {
     return (
       <div className="container py-8">
-        <p className="text-red-500">{t.scoutRun.error.missingId}</p>
+        <p className="text-red-500">{t.scoutRun.errorMissingId}</p>
       </div>
     );
   }
@@ -199,7 +198,7 @@ export function ScoutRunResultsPage() {
           {data.pages > 1 && (
             <div className="flex items-center justify-between pt-2">
               <p className="text-sm text-muted-foreground">
-                {t.scoutRun.pagination.pageLabel
+                {t.scoutRun.paginationPageLabel
                   .replace("{page}", String(data.page))
                   .replace("{pages}", String(data.pages))}
               </p>
@@ -211,7 +210,7 @@ export function ScoutRunResultsPage() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  {t.scoutRun.pagination.previous}
+                  {t.scoutRun.paginationPrevious}
                 </Button>
                 <Button
                   variant="outline"
@@ -219,7 +218,7 @@ export function ScoutRunResultsPage() {
                   disabled={data.page >= data.pages}
                   onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
                 >
-                  {t.scoutRun.pagination.next}
+                  {t.scoutRun.paginationNext}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -265,8 +264,10 @@ function RunHeader({
                   STATUS_DOT[run.status] || "bg-zinc-400",
                 )}
               />
-              {t.scoutRun.statusLabels[run.status as keyof typeof t.scoutRun.statusLabels] ||
-                run.status}
+              {t.scoutRun[
+                `status${run.status.charAt(0).toUpperCase()}${run.status.slice(1)}` as
+                  | "statusPending" | "statusRunning" | "statusCompleted" | "statusFailed"
+              ] || run.status}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {run.source.toUpperCase()} · "{keywords}"
@@ -277,7 +278,7 @@ function RunHeader({
           <div className="text-right">
             <p className="text-2xl font-semibold">{totalCount}</p>
             <p className="text-xs text-muted-foreground">
-              {t.scoutRun.resultsCount}
+              {t.scoutRun.resultsCountTotal}
             </p>
           </div>
         </div>
@@ -298,22 +299,22 @@ function ResultsTable({ results }: { results: ScoutRunProspect[] }) {
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
                 <th className="text-left p-3 font-medium">
-                  {t.scoutRun.tableHeaders.name}
+                  {t.scoutRun.colName}
                 </th>
                 <th className="text-left p-3 font-medium">
-                  {t.scoutRun.tableHeaders.rating}
+                  {t.scoutRun.colRating}
                 </th>
                 <th className="text-left p-3 font-medium">
-                  {t.scoutRun.tableHeaders.reviewCount}
+                  {t.scoutRun.colReviewCount}
                 </th>
                 <th className="text-left p-3 font-medium">
-                  {t.scoutRun.tableHeaders.hours}
+                  {t.scoutRun.colHours}
                 </th>
                 <th className="text-left p-3 font-medium">
-                  {t.scoutRun.tableHeaders.phone}
+                  {t.scoutRun.colPhone}
                 </th>
                 <th className="text-left p-3 font-medium">
-                  {t.scoutRun.tableHeaders.website}
+                  {t.scoutRun.colWebsite}
                 </th>
               </tr>
             </thead>

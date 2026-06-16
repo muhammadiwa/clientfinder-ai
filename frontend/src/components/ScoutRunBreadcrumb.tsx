@@ -53,11 +53,11 @@ export function ScoutRunBreadcrumb({ scoutRunId, className }: Props) {
         className="flex items-center gap-1 font-medium text-foreground hover:underline focus:outline-none focus:ring-2 focus:ring-ring rounded-sm"
       >
         <span>
-          {t.scoutRun.breadcrumb.foundFrom}{" "}
-          {t.scoutRun.breadcrumb.runLabel.replace("{id}", shortId)}
+          {t.scoutRun.foundFrom}{" "}
+          {t.scoutRun.runLabel.replace("{id}", shortId)}
         </span>
         <ArrowRight className="h-3 w-3" aria-hidden="true" />
-        <span className="sr-only">{t.scoutRun.breadcrumb.view}</span>
+        <span className="sr-only">{t.scoutRun.view}</span>
       </button>
     </nav>
   );

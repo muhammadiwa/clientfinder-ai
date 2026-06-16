@@ -1,11 +1,20 @@
 /**
- * ScoutRun API client (Sprint 4 PR 3).
+ * ScoutRun API client (Sprint 4 PR 3, refactored Sprint 4.1).
  *
  * Powers the /scout-runs/:id/results page (the Layer 2 of the
  * hybrid C display from the redesign). The endpoint returns
  * the ScoutRun metadata + a paginated page of prospects
  * filtered by scout_run_id.
+ *
+ * Sprint 4.1 followup: now uses the shared `api` axios
+ * instance (with auth interceptor + refresh-on-401) instead
+ * of raw fetch + manual token param. This was the C2 finding
+ * from the holistic Sprint 4 review — three different auth
+ * patterns (fetch+token, axios+interceptor, localStorage
+ * direct) for the same JWT, in the same sprint.
  */
+
+import { api } from "./client";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
@@ -47,21 +56,10 @@ export async function getScoutRunResults(
   runId: string,
   page: number = 1,
   perPage: number = 25,
-  token: string,
 ): Promise<ScoutRunResultsResponse> {
-  const params = new URLSearchParams({
-    page: String(page),
-    per_page: String(perPage),
-  });
-  const res = await fetch(
-    `${API_BASE}/scraping/scout-runs/${runId}/results?${params}`,
-    { headers: { Authorization: `Bearer ${token}` } },
+  const { data } = await api.get<ScoutRunResultsResponse>(
+    `${API_BASE}/scraping/scout-runs/${runId}/results`,
+    { params: { page, per_page: perPage } },
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(
-      err.detail || `Failed to load ScoutRun results (${res.status})`,
-    );
-  }
-  return res.json();
+  return data;
 }
