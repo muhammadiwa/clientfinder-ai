@@ -238,7 +238,6 @@ export function ProspectDetailPage() {
     hooks,
     signals,
     scout_run_id: scoutRunId,
-    scout_run_total: scoutRunTotal,
   } = detail;
   const hasScore = lead_score != null;
 
@@ -247,10 +246,7 @@ export function ProspectDetailPage() {
       {/* Sprint 4 PR 3: breadcrumb linking back to the ScoutRun
           that found this prospect. Layer 1 of the hybrid C display
           — small, clean, deep-linkable. */}
-      <ScoutRunBreadcrumb
-        scoutRunId={scoutRunId}
-        totalCount={scoutRunTotal}
-      />
+      <ScoutRunBreadcrumb scoutRunId={scoutRunId} />
 
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4">

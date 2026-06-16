@@ -297,6 +297,7 @@ const STRINGS = {
     maxResults: "maks {n} hasil",
     resultsCount: "hasil ditemukan",
     empty: "ScoutRun ini belum menghasilkan prospek apapun",
+    outOfRange: "Halaman ini tidak memiliki hasil. Coba halaman lain.",
     error: {
       missingId: "ID ScoutRun tidak valid",
       notFound: "ScoutRun tidak ditemukan",

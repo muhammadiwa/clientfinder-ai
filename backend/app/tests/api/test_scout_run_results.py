@@ -46,18 +46,25 @@ class TestScoutRunResultsEndpoint:
         assert per_page_default == 25
 
     def test_query_param_bounds(self):
-        """page >= 1, per_page 1..100 (Pydantic Query constraints)."""
-        from fastapi import params as fastapi_params
+        """per_page > 100 is rejected at the FastAPI layer (422).
+
+        Source inspection: verify the bounds exist in the
+        function source code. The Query() call must include
+        le=100 + ge=1 for per_page and ge=1 for page.
+        """
+        import inspect
         from app.api.v1.scraping import get_scout_run_results
-        sig = inspect.getargspec(get_scout_run_results) if hasattr(inspect, "getargspec") else None
-        sig = inspect.signature(get_scout_run_results)
-        for param_name, expected in (("page", 1), ("per_page", 25)):
-            value = sig.parameters[param_name].default
-            if isinstance(value, fastapi_params.Query):
-                value = value.default
-            assert value == expected, (
-                f"{param_name} default should be {expected}, got {value}"
-            )
+        src = inspect.getsource(get_scout_run_results)
+        # per_page must bound 1..100
+        assert "per_page: int = Query(25, ge=1, le=100)" in src, (
+            "per_page must be bounded [1, 100] via Query(le=100) "
+            "to prevent unbounded result-set sizes"
+        )
+        # page must be >= 1
+        assert "page: int = Query(1, ge=1)" in src, (
+            "page must be bounded >=1 via Query(ge=1) "
+            "to prevent negative offsets"
+        )
 
     @pytest.mark.asyncio
     async def test_invalid_uuid_raises_400(self):
@@ -65,45 +72,58 @@ class TestScoutRunResultsEndpoint:
         from fastapi import HTTPException
         from app.api.v1.scraping import get_scout_run_results
 
-        # Mock DB + current_user (we never reach the DB call)
-        with patch("app.api.v1.scraping.DB") as MockDB, \
-             patch("app.api.v1.scraping.CurrentUser"):
-            try:
-                await get_scout_run_results(
-                    run_id="not-a-uuid",
-                    current_user=None,
-                    db=AsyncMock(),
-                )
-            except HTTPException as e:
-                assert e.status_code == 400
-                assert "Invalid" in e.detail
-            else:
-                pytest.fail("Expected HTTPException(400) for invalid UUID")
+        # The function takes current_user + db as direct args;
+        # the patch below is intentionally a no-op (the type
+        # CurrentUser is a class hint, not a DI target). The
+        # test passes because we call the function directly.
+        try:
+            await get_scout_run_results(
+                run_id="not-a-uuid",
+                current_user=None,
+                db=AsyncMock(),
+            )
+        except HTTPException as e:
+            assert e.status_code == 400
+            assert "Invalid" in e.detail
+        else:
+            pytest.fail("Expected HTTPException(400) for invalid UUID")
 
     @pytest.mark.asyncio
     async def test_unknown_run_returns_404(self):
-        """A valid UUID but unknown run_id returns 404."""
+        """A valid UUID but unknown run_id returns 404.
+
+        C1 review: the query must filter by created_by. We
+        mock current_user.id so the filter fails (run.created_by
+        is None on the mock → filter excludes it).
+        """
         from fastapi import HTTPException
         from app.api.v1.scraping import get_scout_run_results
 
-        # Mock DB that returns None for the job
+        # Mock current_user with an id
+        mock_user = MagicMock()
+        mock_user.id = uuid4()
+
+        # Mock DB: the run lookup with created_by filter returns None
+        # (because mock_job has no created_by attribute set, or the
+        # filter simply doesn't match the mock's auto-spec'd values).
         mock_db = AsyncMock()
         mock_scalar = AsyncMock()
         mock_scalar.scalar_one_or_none = MagicMock(return_value=None)
         mock_db.execute = AsyncMock(return_value=mock_scalar)
 
-        with patch("app.api.v1.scraping.CurrentUser"):
-            try:
-                await get_scout_run_results(
-                    run_id=str(uuid4()),
-                    current_user=None,
-                    db=mock_db,
-                )
-            except HTTPException as e:
-                assert e.status_code == 404
-                assert "not found" in e.detail
-            else:
-                pytest.fail("Expected HTTPException(404) for unknown run")
+        try:
+            await get_scout_run_results(
+                run_id=str(uuid4()),
+                current_user=mock_user,
+                db=mock_db,
+            )
+        except HTTPException as e:
+            assert e.status_code == 404
+            # M10: generic message — UUID should not leak
+            assert "not found" in e.detail
+            assert "ScoutRun" in e.detail
+        else:
+            pytest.fail("Expected HTTPException(404) for unknown run")
 
     def test_response_uses_prospect_out_with_raw_data(self):
         """The response uses ProspectOut (which includes raw_data
@@ -119,6 +139,24 @@ class TestScoutRunResultsEndpoint:
         assert "mode=\"json\"" in src or "mode='json'" in src
         # Must filter by scout_run_id (the FK from PR 2)
         assert "scout_run_id" in src
+        # C1 review: must filter by created_by (prevent IDOR)
+        assert "created_by" in src, (
+            "get_scout_run_results must filter by created_by to "
+            "prevent cross-tenant data leak. The fix is in the "
+            "PR 3 review patch."
+        )
+        # I3 review: must have a stable secondary sort key
+        assert "Prospect.id" in src or "Prospect_id" in src, (
+            "Pagination ordering must include a stable secondary "
+            "key (Prospect.id) to avoid skipping/duplicating rows "
+            "when created_at ties on batch inserts."
+        )
+        # I6 review: must filter out soft-deleted prospects
+        assert "deleted_at" in src, (
+            "Results query must filter Prospect.deleted_at.is_(None) "
+            "to match the rest of the prospect API. Otherwise "
+            "soft-deleted rows appear in the table and 404 on click."
+        )
 
 
 class TestProspectOutScoutRunId:

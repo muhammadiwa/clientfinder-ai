@@ -164,6 +164,10 @@ async def get_scout_run_results(
     extra round-trip per row.
 
     Used by the /scout-runs/:id/results frontend page.
+
+    Security (C1 review): filtered by created_by to prevent
+    cross-tenant data leak. Runs with NULL created_by (legacy
+    or orphaned) are treated as inaccessible — 404.
     """
     from uuid import UUID
 
@@ -176,19 +180,30 @@ async def get_scout_run_results(
         raise HTTPException(status_code=400, detail="Invalid run ID")
 
     job = (
-        await db.execute(select(ScrapingJob).where(ScrapingJob.id == rid))
+        await db.execute(
+            select(ScrapingJob)
+            .where(ScrapingJob.id == rid)
+            .where(ScrapingJob.created_by == current_user.id)
+        )
     ).scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=404, detail=f"ScoutRun {run_id} not found")
+        # M10: generic message — don't leak the UUID to the user
+        raise HTTPException(status_code=404, detail="ScoutRun not found")
 
-    total_q = select(func.count(Prospect.id)).where(Prospect.scout_run_id == rid)
+    # I3: stable secondary sort key (created_at can tie on batch inserts)
+    # I6: filter out soft-deleted prospects (otherwise row click → 404)
+    base_filter = [
+        Prospect.scout_run_id == rid,
+        Prospect.deleted_at.is_(None),
+    ]
+    total_q = select(func.count(Prospect.id)).where(*base_filter)
     total = (await db.execute(total_q)).scalar_one()
 
     offset = (page - 1) * per_page
     results_q = (
         select(Prospect)
-        .where(Prospect.scout_run_id == rid)
-        .order_by(Prospect.created_at.desc())
+        .where(*base_filter)
+        .order_by(Prospect.created_at.desc(), Prospect.id.asc())
         .offset(offset)
         .limit(per_page)
     )

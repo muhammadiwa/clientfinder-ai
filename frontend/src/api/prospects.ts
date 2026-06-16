@@ -78,10 +78,12 @@ export interface ProspectDetailResponse {
   signals: SignalItem[];
   // Sprint 4 PR 3: link to the ScoutRun that found this
   // prospect. Powers the breadcrumb on ProspectDetail.
+  // Nullable for legacy + manually-imported prospects.
   scout_run_id?: string | null;
-  // Sprint 4 PR 3: the total number of results the ScoutRun
-  // produced (for the breadcrumb's "via X · N total" hint).
-  scout_run_total?: number | null;
+  // C2 review: the count hint was removed from the breadcrumb
+  // because the /prospects/{id} endpoint doesn't return a
+  // run-level total. The count is visible on the
+  // /scout-runs/:id/results page (Layer 2) instead.
 }
 
 export interface SignalItem {

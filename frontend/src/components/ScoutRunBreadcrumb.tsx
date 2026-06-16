@@ -8,6 +8,11 @@
  *
  * Null-safe: if the prospect has no scout_run_id (legacy /
  * manual import), returns null.
+ *
+ * C2 review: the count hint was dropped from the breadcrumb
+ * scope because the /prospects/{id} endpoint doesn't return
+ * a run-level total. The count is visible on the
+ * /scout-runs/:id/results page (Layer 2) instead.
  */
 
 import { useNavigate } from "react-router-dom";
@@ -18,11 +23,10 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   scoutRunId: string | null | undefined;
-  totalCount?: number | null;
   className?: string;
 }
 
-export function ScoutRunBreadcrumb({ scoutRunId, totalCount, className }: Props) {
+export function ScoutRunBreadcrumb({ scoutRunId, className }: Props) {
   const t = useT();
   const navigate = useNavigate();
 
@@ -31,36 +35,30 @@ export function ScoutRunBreadcrumb({ scoutRunId, totalCount, className }: Props)
   // Show first 8 chars of the UUID for a friendly display
   const shortId = scoutRunId.slice(0, 8);
 
+  // M11: single button (was: text-button + separate "view" button).
+  // M8: wrap in <nav> for the breadcrumb landmark.
   return (
-    <div
+    <nav
+      aria-label="breadcrumb"
       className={cn(
         "flex items-center gap-2 text-sm text-muted-foreground px-3 py-2 rounded-md",
         "bg-muted/40 border border-border/50",
         className,
       )}
     >
-      <MapPin className="h-4 w-4 shrink-0" />
-      <span>
-        {t.scoutRun.breadcrumb.foundFrom}{" "}
-        <button
-          onClick={() => navigate(`/scout-runs/${scoutRunId}/results`)}
-          className="font-medium text-foreground hover:underline"
-        >
-          {t.scoutRun.breadcrumb.runLabel.replace("{id}", shortId)}
-        </button>
-        {typeof totalCount === "number" && totalCount > 0 && (
-          <span className="ml-1 text-xs">
-            · {totalCount} {t.scoutRun.breadcrumb.resultsCount}
-          </span>
-        )}
-      </span>
+      <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
       <button
+        type="button"
         onClick={() => navigate(`/scout-runs/${scoutRunId}/results`)}
-        className="ml-auto flex items-center gap-1 text-xs text-primary hover:underline"
+        className="flex items-center gap-1 font-medium text-foreground hover:underline focus:outline-none focus:ring-2 focus:ring-ring rounded-sm"
       >
-        {t.scoutRun.breadcrumb.view}
-        <ArrowRight className="h-3 w-3" />
+        <span>
+          {t.scoutRun.breadcrumb.foundFrom}{" "}
+          {t.scoutRun.breadcrumb.runLabel.replace("{id}", shortId)}
+        </span>
+        <ArrowRight className="h-3 w-3" aria-hidden="true" />
+        <span className="sr-only">{t.scoutRun.breadcrumb.view}</span>
       </button>
-    </div>
+    </nav>
   );
 }

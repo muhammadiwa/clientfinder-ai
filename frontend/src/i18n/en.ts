@@ -294,6 +294,7 @@ const STRINGS = {
     maxResults: "max {n} results",
     resultsCount: "results found",
     empty: "This ScoutRun has not produced any prospects yet",
+    outOfRange: "This page has no results. Try another page.",
     error: {
       missingId: "Invalid ScoutRun ID",
       notFound: "ScoutRun not found",
