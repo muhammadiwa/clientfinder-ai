@@ -104,15 +104,23 @@ async def list_scraping_jobs(
     page: Annotated[int, "Page"] = 1,
     per_page: Annotated[int, "Per page"] = 20,
 ) -> ScrapingJobListResponse:
-    """List all scraping jobs, newest first."""
+    """List all scraping jobs owned by the current user, newest first.
+
+    Sprint 4.1 followup: filtered by created_by to prevent
+    cross-tenant data leak. Same IDOR fix as the
+    /scout-runs/{id}/results endpoint from PR 3.
+    """
     per_page = min(max(per_page, 1), 100)
     offset = (max(page, 1) - 1) * per_page
 
-    count_q = select(func.count(ScrapingJob.id))
+    count_q = select(func.count(ScrapingJob.id)).where(
+        ScrapingJob.created_by == current_user.id
+    )
     total = (await db.execute(count_q)).scalar() or 0
 
     q = (
         select(ScrapingJob)
+        .where(ScrapingJob.created_by == current_user.id)
         .order_by(desc(ScrapingJob.created_at))
         .offset(offset)
         .limit(per_page)
@@ -131,7 +139,12 @@ async def get_scraping_job(
     current_user: CurrentUser,
     db: DB,
 ) -> ScrapingJob:
-    """Get a single scraping job by ID."""
+    """Get a single scraping job by ID.
+
+    Sprint 4.1 followup: filtered by created_by. Jobs owned
+    by other users (or with NULL created_by) return 404 —
+    we don't disclose existence.
+    """
     from uuid import UUID
 
     try:
@@ -140,10 +153,14 @@ async def get_scraping_job(
         raise HTTPException(status_code=400, detail="Invalid job ID")
 
     job = (
-        await db.execute(select(ScrapingJob).where(ScrapingJob.id == jid))
+        await db.execute(
+            select(ScrapingJob)
+            .where(ScrapingJob.id == jid)
+            .where(ScrapingJob.created_by == current_user.id)
+        )
     ).scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        raise HTTPException(status_code=404, detail="Job not found")
     return job
 
 
@@ -236,7 +253,11 @@ async def retry_scraping_job(
     current_user: CurrentUser,
     db: DB,
 ) -> ScrapingJob:
-    """Retry a failed (or completed) scraping job. Resets to pending."""
+    """Retry a failed (or completed) scraping job. Resets to pending.
+
+    Sprint 4.1 followup: filtered by created_by. Can't retry
+    another user's job (returns 404).
+    """
     from uuid import UUID
 
     try:
@@ -245,10 +266,14 @@ async def retry_scraping_job(
         raise HTTPException(status_code=400, detail="Invalid job ID")
 
     job = (
-        await db.execute(select(ScrapingJob).where(ScrapingJob.id == jid))
+        await db.execute(
+            select(ScrapingJob)
+            .where(ScrapingJob.id == jid)
+            .where(ScrapingJob.created_by == current_user.id)
+        )
     ).scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        raise HTTPException(status_code=404, detail="Job not found")
 
     job.status = "pending"
     job.error_message = None
@@ -273,7 +298,11 @@ async def delete_scraping_job(
     current_user: CurrentUser,
     db: DB,
 ) -> None:
-    """Delete a scraping job. Logs the deletion to activity (P1-B11 fix)."""
+    """Delete a scraping job. Logs the deletion to activity (P1-B11 fix).
+
+    Sprint 4.1 followup: filtered by created_by. Can't
+    delete another user's job (returns 404).
+    """
     from uuid import UUID
 
     try:
@@ -282,10 +311,14 @@ async def delete_scraping_job(
         raise HTTPException(status_code=400, detail="Invalid job ID")
 
     job = (
-        await db.execute(select(ScrapingJob).where(ScrapingJob.id == jid))
+        await db.execute(
+            select(ScrapingJob)
+            .where(ScrapingJob.id == jid)
+            .where(ScrapingJob.created_by == current_user.id)
+        )
     ).scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        raise HTTPException(status_code=404, detail="Job not found")
 
     # Log the deletion BEFORE removing the job (so we still have
     # the source for the activity record).

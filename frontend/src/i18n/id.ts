@@ -287,43 +287,37 @@ const STRINGS = {
   },
 
   // Sprint 4 PR 3: Layer 2 of the hybrid C display
-  // (dedicated /scout-runs/:id/results page + breadcrumb)
+  // (dedicated /scout-runs/:id/results page + breadcrumb).
+  // Sprint 4.1 followup: flattened from nested (breadcrumb.*,
+  // pagination.*, statusLabels.*) to flat keys to match the
+  // existing scout.* convention. Prevents future key
+  // collisions and is easier for translators.
   scoutRun: {
     title: "Hasil ScoutRun",
     subtitle: "Data lengkap hasil pencarian Scout",
-    breadcrumb: {
-      foundFrom: "Ditemukan dari",
-      runLabel: "ScoutRun #{id}",
-      resultsCount: "hasil",
-      view: "Lihat semua",
-    },
+    foundFrom: "Ditemukan dari",
+    runLabel: "ScoutRun #{id}",
+    resultsCount: "hasil",
+    view: "Lihat semua",
     maxResults: "maks {n} hasil",
-    resultsCount: "hasil ditemukan",
+    resultsCountTotal: "hasil ditemukan",
     empty: "ScoutRun ini belum menghasilkan prospek apapun",
     outOfRange: "Halaman ini tidak memiliki hasil. Coba halaman lain.",
-    error: {
-      missingId: "ID ScoutRun tidak valid",
-      notFound: "ScoutRun tidak ditemukan",
-    },
-    statusLabels: {
-      pending: "Menunggu",
-      running: "Berjalan",
-      completed: "Selesai",
-      failed: "Gagal",
-    },
-    tableHeaders: {
-      name: "Nama",
-      rating: "Rating",
-      reviewCount: "Ulasan",
-      hours: "Jam buka",
-      phone: "Telepon",
-      website: "Website",
-    },
-    pagination: {
-      previous: "Sebelumnya",
-      next: "Selanjutnya",
-      pageLabel: "Halaman {page} dari {pages}",
-    },
+    statusPending: "Menunggu",
+    statusRunning: "Berjalan",
+    statusCompleted: "Selesai",
+    statusFailed: "Gagal",
+    colName: "Nama",
+    colRating: "Rating",
+    colReviewCount: "Ulasan",
+    colHours: "Jam buka",
+    colPhone: "Telepon",
+    colWebsite: "Website",
+    paginationPrevious: "Sebelumnya",
+    paginationNext: "Selanjutnya",
+    paginationPageLabel: "Halaman {page} dari {pages}",
+    errorMissingId: "ID ScoutRun tidak valid",
+    errorNotFound: "ScoutRun tidak ditemukan",
   },
 
   // Prospect detail
