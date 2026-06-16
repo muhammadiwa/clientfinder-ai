@@ -36,15 +36,27 @@ def upgrade() -> None:
         ["id"],
         ondelete="SET NULL",
     )
+    # NOTE: index is created in the migration (not the model) to
+    # control the name and avoid a duplicate `ix_prospects_scout_run_id`
+    # if SQLAlchemy create_all ever runs alongside alembic.
     op.create_index(
         "ix_prospects_scout_run_id",
         "prospects",
         ["scout_run_id"],
     )
     # GIN index for future "search inside raw_data" queries
-    # (e.g. "show me all Maps prospects with rating >= 4.5")
+    # (e.g. "show me all Maps prospects with rating >= 4.5").
+    # IF NOT EXISTS makes the migration idempotent for re-runs.
+    # NOTE for production scale: standard CREATE INDEX takes an
+    # ACCESS EXCLUSIVE lock and blocks writes for the duration
+    # of the build. For a large `prospects` table (>100k rows),
+    # this migration should be replaced with a CONCURRENTLY variant
+    # (cannot run inside a transaction — needs a separate non-
+    # transactional migration). At v1 scale (hundreds of prospects)
+    # the lock is negligible.
     op.execute(
-        "CREATE INDEX ix_prospects_raw_data_gin ON prospects USING gin (raw_data)"
+        "CREATE INDEX IF NOT EXISTS ix_prospects_raw_data_gin "
+        "ON prospects USING gin (raw_data)"
     )
 
 

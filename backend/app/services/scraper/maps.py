@@ -235,21 +235,25 @@ class GoogleMapsScraper(BaseScraper):
 
 
 _PHONE_RE = re.compile(r"(\+?\d[\d\s\-]{7,}\d)")
-# Address hint keywords. No trailing \b because "Jl." ends with a
-# non-word char (period) followed by space — \b would fail there.
-# The line-based search in _extract_address already constrains
-# matches to a single line, so we don't need the word boundary.
+# Address hint keywords. Uses a negative lookahead `(?!\w)` instead of
+# `\b` to anchor the match. `\b` fails after "Jl." (period is non-word
+# so .→space has no boundary), and removing `\b` entirely lets
+# "Jalanisme" / "Jlr Coffee" match. The lookahead is the tightest
+# bound that works for both period-ending and word-ending keywords.
 _ADDR_HINT = re.compile(
-    r"(Jl\.|Jalan|Ruko|Komp\.|Kompleks|Blok|No\.|Jl\s|Kel\.|Kec\.|Kota\s|Kab\.|Jl.)",
+    r"(Jl\.|Jalan|Ruko|Komp\.|Kompleks|Blok|No\.|Jl\s|Kel\.|Kec\.|Kota\s|Kab\.)(?!\w)",
     re.IGNORECASE,
 )
 # Maps rating is shown as "4,5" or "4.5" (Indonesian locale uses comma).
-# It's followed by either a star icon or "(N ulasan)" pattern.
+# It's followed by either a star icon or "(N ulasan)" pattern. Rating
+# values are bounded to [1,5] (Maps max is 5); a leading `\b` prevents
+# matching inside "10" or "50".
 _RATING_RE = re.compile(
-    r"\b([0-9](?:[.,][0-9])?)\s*(?:★|bintang|\(\s*[\d.,]+\s*ulasan\b)",
+    r"\b([1-5](?:[.,][0-9])?)\s*(?:★|\(\s*[\d.,]+\s*ulasan\b)",
     re.IGNORECASE,
 )
-# Maps review count: "(123 ulasan)" or "1,2 rb ulasan" or "1.234 ulasan"
+# Maps review count: "(123 ulasan)" or "1,2 rb ulasan" or "1.000 ulasan"
+# (Indonesian thousands separator, NO `rb` suffix — Maps uses bare dots).
 _REVIEW_RE = re.compile(
     r"([\d.,]+)\s*(rb|ribu|k|K)?\s*ulasan\b",
     re.IGNORECASE,
@@ -263,9 +267,13 @@ _HOURS_RE = re.compile(
     r"Tutup\s*permanen)",
     re.IGNORECASE,
 )
-# Price range: "$$" / "$$$" / "Rp 50.000–100.000" / "Rp 50 rb"
+# Price range: "$$" / "$$$" / "Rp 50.000–100.000" / "Rp 50 rb".
+# Anchored with `(?:^|(?<=\s))` to require the match to start at
+# the beginning of a token. The trailing `(?!\w)` (NOT `\b`) is
+# required for `$$` at end-of-line — `\b` fails at the transition
+# from non-word to nothing (end of input).
 _PRICE_RE = re.compile(
-    r"(\${2,4})|(Rp\.?\s*[\d.,]+(?:\s*[\u2013\u2014\-]\s*[\d.,]+)?(?:\s*rb|ribu)?)",
+    r"(?:^|(?<=\s))(\$+(?!\w)|Rp\.?\s*[\d.,]+(?:\s*[\u2013\u2014\-]\s*[\d.,]+)?(?:\s*(?:rb|ribu))?)",
     re.IGNORECASE,
 )
 # Service options: "Makan di tempat", "Bawa pulang", "Pesan antar",
@@ -294,35 +302,56 @@ def _extract_address(text: str) -> str | None:
     return None
 
 
-def _extract_rating(text: str) -> str | None:
+def _extract_rating(text: str) -> float | None:
     """Extract Maps rating (e.g. "4,5") from card text.
 
-    Looks for the first number followed by either a star icon
-    or a parenthesized review count. Returns the rating in
-    canonical form (4.5) regardless of locale.
+    Returns a float in [1.0, 5.0] (Maps max is 5). The regex
+    enforces the upper bound; ratings outside this range are
+    treated as garbage. Indonesian locale uses comma as the
+    decimal separator ("4,5") — converted to float via dot.
     """
     m = _RATING_RE.search(text)
     if m:
-        return m.group(1).replace(",", ".")
+        return float(m.group(1).replace(",", "."))
     return None
 
 
 def _extract_review_count(text: str) -> int | None:
-    """Extract Maps review count (e.g. "1,2 rb ulasan" → 1200).
+    """Extract Maps review count.
 
-    Handles Indonesian abbreviations: rb/ribu/k = thousand.
-    Returns int or None if no review count found.
+    Handles the Indonesian number-formatting ambiguity:
+    - `"1.000 ulasan"` (ID thousands, no suffix) → 1000
+    - `"1,000 ulasan"` (English thousands) → 1000
+    - `"500 ulasan"` → 500
+    - `"1,2 rb ulasan"` (ID decimal + rb suffix) → 1200
+    - `"1.2 ribu ulasan"` (English decimal + ribu) → 1200
+    - `"10.000 ulasan"` (ID thousands, the "10.000" trap) → 10000
+
+    The rule: if `rb`/`ribu`/`k` suffix is present, the captured
+    number is decimal (comma → dot, multiply by 1000). Otherwise
+    all separators (`.` and `,`) are thousands — strip them.
+    Review counts are integers, so decimals without suffix are
+    treated as thousands.
     """
     m = _REVIEW_RE.search(text)
     if not m:
         return None
-    try:
-        n = float(m.group(1).replace(",", "."))
-    except ValueError:
-        return None
+    number_str = m.group(1)
     suffix = (m.group(2) or "").lower()
     if suffix in ("rb", "ribu", "k"):
+        # Decimal number + multiplier suffix
+        try:
+            n = float(number_str.replace(",", "."))
+        except ValueError:
+            return None
         n *= 1000
+    else:
+        # No suffix: both `.` and `,` are thousands separators.
+        # Review counts are integers, so a bare decimal makes no sense.
+        try:
+            n = int(number_str.replace(".", "").replace(",", ""))
+        except ValueError:
+            return None
     return int(n)
 
 
@@ -342,7 +371,7 @@ def _extract_price_range(text: str) -> str | None:
     Examples: "$$", "$$$", "Rp 50.000–100.000", "Rp 50 rb".
     """
     m = _PRICE_RE.search(text)
-    return m.group(0).strip() if m else None
+    return m.group(1).strip() if m else None
 
 
 def _extract_service_options(text: str) -> list[str] | None:
