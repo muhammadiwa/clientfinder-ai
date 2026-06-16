@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListOrdered, Plus, Power, Trash2, ChevronRight } from "lucide-react";
@@ -63,9 +63,6 @@ export default function SequencesPage() {
           { order: 2, channel: "auto", category: "breakup", day_offset: 7 },
         ],
         is_active: true,
-        target_grade: null,
-        target_source: null,
-        target_industry: null,
         daily_send_cap: 50,
       });
       await reload();
@@ -318,7 +315,7 @@ function SequenceTimeSeriesChart({ sequenceId }: { sequenceId: string }) {
         {t.timeSeries}
       </p>
       <ActivityChart
-        data={data.by_day.map((d) => ({
+        data={data.by_day.map((d: { date: string; sent: number; replied: number }) => ({
           date: d.date,
           sent: d.sent,
           replied: d.replied,

@@ -73,14 +73,13 @@ export interface ProspectListResponse {
 
 // --- T4 Scout module ---
 
-export type ScrapingSource =
-  | "google"
-  | "google_places"
-  | "maps"
-  | "yelp"
-  | "tokopedia"
-  | "twitter"
-  | "threads";
+// v1 scout sources (per user directive 2026-06-14). Only 3 active:
+// maps, twitter, threads. The other 4 (google, google_places, yelp,
+// tokopedia) were deactivated because the scout→prospect flow was
+// confused with too many options. Re-enable by adding the source
+// name to the ScrapingSource Literal in backend/app/schemas/scraping.py
+// and the SOURCES array in frontend/src/pages/Scout.tsx.
+export type ScrapingSource = "maps" | "twitter" | "threads";
 export type ScrapingStatus = "pending" | "running" | "completed" | "failed";
 
 export interface ScrapingJob {
@@ -292,11 +291,20 @@ export interface TemplateListResponse {
 
 // --- T6 Sequences (T6 Group 3) ---
 
+/**
+ * SequenceChannel extends MessageChannel with the "auto" sentinel.
+ * "auto" = let the channel_selector pick email vs WhatsApp based
+ * on the prospect's contact info + industry bias (see
+ * backend/app/services/outreach/channel_selector.py).
+ */
+export type SequenceChannel = MessageChannel | "auto";
+
 export interface SequenceStep {
   order: number;
-  channel: MessageChannel;
+  channel: SequenceChannel;
   template_id?: string | null;
   day_offset: number;
+  category?: string;     // T6 Group 3 — first_touch | follow_up | breakup
   conditions?: Record<string, unknown>;
 }
 
@@ -305,6 +313,7 @@ export interface Sequence {
   name: string;
   description: string | null;
   steps: SequenceStep[];
+  step_count: number;   // Sprint 3A.2 — convenience for UI (server-computed len(steps))
   is_active: boolean;
   target_grade: string[] | null;
   target_source: string[] | null;
