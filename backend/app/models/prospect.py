@@ -72,6 +72,17 @@ class Prospect(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     source_query: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     raw_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    # Sprint 4 PR 2: scout_run_id FK links each prospect back to
+    # the ScoutRun (scraping_jobs row) that discovered it. Nullable
+    # for legacy prospects (pre-PR-2) and manually-imported ones.
+    # ON DELETE SET NULL so deleting a ScoutRun doesn't cascade
+    # and lose the prospects.
+    scout_run_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("scraping_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Pipeline status
     status: Mapped[str] = mapped_column(

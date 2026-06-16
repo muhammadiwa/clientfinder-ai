@@ -184,9 +184,20 @@ class GoogleMapsScraper(BaseScraper):
 
         # Address + phone are often in the card text below the name
         full_text = (await card.inner_text()) or ""
-        # First line of the text after the name is usually the address
+        # Sprint 4 PR 2: extract the FULL Places data, not just
+        # address + phone. The user spec (turn 58): "untuk google
+        # maps semua datanya di simpan contoh sosmed nya juga dll
+        # yang berkaitan dan datanya berguna untuk dijadikan
+        # prospek" — save ALL Google Maps data. The full payload
+        # lands in prospects.raw_data JSONB and powers the
+        # breadcrumb in PR 3 + the /scout-runs/:id page.
         address = _extract_address(full_text)
         phone = _extract_phone(full_text)
+        rating = _extract_rating(full_text)
+        review_count = _extract_review_count(full_text)
+        hours = _extract_hours(full_text)
+        price_range = _extract_price_range(full_text)
+        service_options = _extract_service_options(full_text)
 
         # Link with href to the actual website
         website = None
@@ -198,6 +209,19 @@ class GoogleMapsScraper(BaseScraper):
             if href and "google.com" not in href:
                 website = href
 
+        # Build the full Places extra payload. Sprint 4 PR 2
+        # forwards this whole dict to prospects.raw_data.
+        extra: dict[str, Any] = {
+            "raw_address": address,
+            "rating": rating,
+            "review_count": review_count,
+            "hours": hours,
+            "price_range": price_range,
+            "service_options": service_options,
+        }
+        # Drop None values to keep raw_data tight
+        extra = {k: v for k, v in extra.items() if v is not None}
+
         return ScrapedResult(
             company_name=name[:255],
             website=website[:500] if website else None,
@@ -206,13 +230,49 @@ class GoogleMapsScraper(BaseScraper):
             description=None,
             source_url=None,
             source="maps",
-            extra={"raw_address": address} if address else {},
+            extra=extra,
         )
 
 
 _PHONE_RE = re.compile(r"(\+?\d[\d\s\-]{7,}\d)")
+# Address hint keywords. No trailing \b because "Jl." ends with a
+# non-word char (period) followed by space — \b would fail there.
+# The line-based search in _extract_address already constrains
+# matches to a single line, so we don't need the word boundary.
 _ADDR_HINT = re.compile(
-    r"(Jl\.|Jalan|Ruko|Komp\.|Kompleks|Blok|No\.|Jl\s|Kel\.|Kec\.|Kota\s|Kab\.|Jl.)\b",
+    r"(Jl\.|Jalan|Ruko|Komp\.|Kompleks|Blok|No\.|Jl\s|Kel\.|Kec\.|Kota\s|Kab\.|Jl.)",
+    re.IGNORECASE,
+)
+# Maps rating is shown as "4,5" or "4.5" (Indonesian locale uses comma).
+# It's followed by either a star icon or "(N ulasan)" pattern.
+_RATING_RE = re.compile(
+    r"\b([0-9](?:[.,][0-9])?)\s*(?:★|bintang|\(\s*[\d.,]+\s*ulasan\b)",
+    re.IGNORECASE,
+)
+# Maps review count: "(123 ulasan)" or "1,2 rb ulasan" or "1.234 ulasan"
+_REVIEW_RE = re.compile(
+    r"([\d.,]+)\s*(rb|ribu|k|K)?\s*ulasan\b",
+    re.IGNORECASE,
+)
+# Maps hours: "Buka ⋅ Tutup pukul 21.00", "Buka 24 jam",
+# "Tutup ⋅ Buka pukul 08.00", or "Tutup permanen"
+_HOURS_RE = re.compile(
+    r"(Buka\s*⋅\s*Tutup\s*pukul\s*[\d:.]+|"
+    r"Buka\s*24\s*jam|"
+    r"Tutup\s*⋅\s*Buka\s*pukul\s*[\d:.]+|"
+    r"Tutup\s*permanen)",
+    re.IGNORECASE,
+)
+# Price range: "$$" / "$$$" / "Rp 50.000–100.000" / "Rp 50 rb"
+_PRICE_RE = re.compile(
+    r"(\${2,4})|(Rp\.?\s*[\d.,]+(?:\s*[\u2013\u2014\-]\s*[\d.,]+)?(?:\s*rb|ribu)?)",
+    re.IGNORECASE,
+)
+# Service options: "Makan di tempat", "Bawa pulang", "Pesan antar",
+# "Layanan drive-through", "Pengiriman tanpa kontak"
+_SERVICE_OPT_RE = re.compile(
+    r"(Makan di tempat|Bawa pulang|Pesan antar|Layanan drive-through|"
+    r"Pengiriman tanpa kontak|Dine-in|Takeaway|Delivery)",
     re.IGNORECASE,
 )
 
@@ -232,6 +292,77 @@ def _extract_address(text: str) -> str | None:
         if _ADDR_HINT.search(line) and 8 < len(line.strip()) < 200:
             return line.strip()
     return None
+
+
+def _extract_rating(text: str) -> str | None:
+    """Extract Maps rating (e.g. "4,5") from card text.
+
+    Looks for the first number followed by either a star icon
+    or a parenthesized review count. Returns the rating in
+    canonical form (4.5) regardless of locale.
+    """
+    m = _RATING_RE.search(text)
+    if m:
+        return m.group(1).replace(",", ".")
+    return None
+
+
+def _extract_review_count(text: str) -> int | None:
+    """Extract Maps review count (e.g. "1,2 rb ulasan" → 1200).
+
+    Handles Indonesian abbreviations: rb/ribu/k = thousand.
+    Returns int or None if no review count found.
+    """
+    m = _REVIEW_RE.search(text)
+    if not m:
+        return None
+    try:
+        n = float(m.group(1).replace(",", "."))
+    except ValueError:
+        return None
+    suffix = (m.group(2) or "").lower()
+    if suffix in ("rb", "ribu", "k"):
+        n *= 1000
+    return int(n)
+
+
+def _extract_hours(text: str) -> str | None:
+    """Extract Maps opening hours string.
+
+    Examples: "Buka ⋅ Tutup pukul 21.00", "Buka 24 jam",
+    "Tutup ⋅ Buka pukul 08.00", "Tutup permanen".
+    """
+    m = _HOURS_RE.search(text)
+    return m.group(1).strip() if m else None
+
+
+def _extract_price_range(text: str) -> str | None:
+    """Extract Maps price range indicator.
+
+    Examples: "$$", "$$$", "Rp 50.000–100.000", "Rp 50 rb".
+    """
+    m = _PRICE_RE.search(text)
+    return m.group(0).strip() if m else None
+
+
+def _extract_service_options(text: str) -> list[str] | None:
+    """Extract Maps service options (dine-in / takeaway / delivery).
+
+    Returns a list of normalized option labels, or None if no
+    service options found.
+    """
+    matches = _SERVICE_OPT_RE.findall(text)
+    if not matches:
+        return None
+    # Deduplicate (case-insensitive) while preserving order
+    seen: set[str] = set()
+    result: list[str] = []
+    for m in matches:
+        key = m.lower()
+        if key not in seen:
+            seen.add(key)
+            result.append(m)
+    return result
 
 
 def _url_quote(s: str) -> str:

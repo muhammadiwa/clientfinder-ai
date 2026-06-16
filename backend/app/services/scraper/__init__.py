@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -54,6 +55,7 @@ async def persist_scraped_to_prospects(
     results: list[ScrapedResult],
     *,
     skip_duplicates: bool = True,
+    scout_run_id: UUID | None = None,
 ) -> int:
     """
     Insert scraped results into the prospects table.
@@ -65,6 +67,11 @@ async def persist_scraped_to_prospects(
         (uq_prospects_company_city) on the table to catch any
         race-condition duplicates (defense in depth)
     Returns: number of NEW prospects actually inserted.
+
+    Sprint 4 PR 2: scout_run_id is stamped on every new prospect
+    so the operator can answer "which ScoutRun found this?".
+    Legacy callers that pass None get the same behavior as before
+    (scout_run_id is nullable + has a default of NULL).
     """
     if not results:
         return 0
@@ -97,6 +104,7 @@ async def persist_scraped_to_prospects(
 
         data = r.to_prospect_dict()
         data["owner_id"] = None
+        data["scout_run_id"] = scout_run_id
         # Plain insert (no ON CONFLICT — the partial unique index
         # would need expression-based conflict target which PG
         # doesn't support; pre-check + index is enough for v1).
@@ -117,6 +125,7 @@ async def persist_scraped_to_prospects(
             try:
                 data = r.to_prospect_dict()
                 data["owner_id"] = None
+                data["scout_run_id"] = scout_run_id
                 db.add(Prospect(**data))
                 await db.commit()
                 inserted += 1

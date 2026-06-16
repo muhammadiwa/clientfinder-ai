@@ -79,7 +79,14 @@ async def _run_job(job_id_str: str) -> int:
                         "timeout": 0,
                     }
 
-            inserted = await persist_scraped_to_prospects(db, results)
+            # Sprint 4 PR 2: stamp every new prospect with
+            # scout_run_id = the ScrapingJob UUID, so the operator
+            # can answer "which ScoutRun found this prospect?"
+            # (the link drives the breadcrumb in PR 3 + the
+            # /scout-runs/:id page).
+            inserted = await persist_scraped_to_prospects(
+                db, results, scout_run_id=jid
+            )
 
             # Mark completed
             job.status = "completed"
