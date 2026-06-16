@@ -14,6 +14,16 @@ applied to every result. The 2026-06-14 audit showed ~67% noise
 for Indonesian UMKM queries; the pre-filter is the cheapest
 way to cut that without disabling Google entirely.
 """
+
+# DEPRECATED 2026-06-14: this source was removed from the
+# v1 scout flow (the scout→prospect UX was confused with too many
+# sources). Kept as commented code so re-enable is just flipping
+# the registry entry in backend/app/services/scraper/__init__.py.
+# To re-enable: add the source to _SCRAPERS, the ScrapingSource
+# Literal in backend/app/schemas/scraping.py, the SOURCES array
+# in frontend/src/pages/Scout.tsx, and the matching kill switch in
+# backend/app/core/config.py.
+
 from __future__ import annotations
 
 import logging

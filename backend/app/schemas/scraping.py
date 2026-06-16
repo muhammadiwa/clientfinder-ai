@@ -8,13 +8,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 ScrapingSource = Literal[
-    "google",
-    "google_places",   # Sprint 3C — Google Places API
     "maps",
-    "yelp",            # Sprint 3C — Yelp Fusion API
-    "tokopedia",       # Sprint 3C — Playwright
     "twitter",
     "threads",
+    # DEPRECATED 2026-06-14: 4 sources removed from v1 scout flow
+    # (google, google_places, yelp, tokopedia). Kept as comments
+    # for re-enable. Code files still exist in backend/app/services/scraper/.
+    # To re-enable: uncomment + re-add to _SCRAPERS + the SOURCES array
+    # in Scout.tsx.
 ]
 ScrapingStatus = Literal["pending", "running", "completed", "failed"]
 

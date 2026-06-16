@@ -73,14 +73,13 @@ export interface ProspectListResponse {
 
 // --- T4 Scout module ---
 
-export type ScrapingSource =
-  | "google"
-  | "google_places"
-  | "maps"
-  | "yelp"
-  | "tokopedia"
-  | "twitter"
-  | "threads";
+// v1 scout sources (per user directive 2026-06-14). Only 3 active:
+// maps, twitter, threads. The other 4 (google, google_places, yelp,
+// tokopedia) were deactivated because the scout→prospect flow was
+// confused with too many options. Re-enable by adding the source
+// name to the ScrapingSource Literal in backend/app/schemas/scraping.py
+// and the SOURCES array in frontend/src/pages/Scout.tsx.
+export type ScrapingSource = "maps" | "twitter" | "threads";
 export type ScrapingStatus = "pending" | "running" | "completed" | "failed";
 
 export interface ScrapingJob {

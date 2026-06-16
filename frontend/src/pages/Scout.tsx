@@ -14,12 +14,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Globe,
   Twitter,
   MessagesSquare,
-  MapPinned,
-  Star,
-  ShoppingBag,
   Sparkles as SparklesIcon,
   ArrowRight,
   Lock,
@@ -66,20 +62,6 @@ interface SourceOption {
 
 const SOURCES: SourceOption[] = [
   {
-    id: "google",
-    label: getT().scout.sources.google,
-    icon: <Globe className="h-4 w-4" />,
-    available: true,
-    description: getT().scout.sources.googleDesc,
-  },
-  {
-    id: "google_places",
-    label: getT().scout.sources.googlePlaces,
-    icon: <MapPinned className="h-4 w-4" />,
-    available: true,
-    description: getT().scout.sources.googlePlacesDesc,
-  },
-  {
     id: "maps",
     label: getT().scout.sources.maps,
     icon: <MapPin className="h-4 w-4" />,
@@ -87,33 +69,23 @@ const SOURCES: SourceOption[] = [
     description: getT().scout.sources.mapsDesc,
   },
   {
-    id: "yelp",
-    label: getT().scout.sources.yelp,
-    icon: <Star className="h-4 w-4" />,
-    available: true,
-    description: getT().scout.sources.yelpDesc,
-  },
-  {
-    id: "tokopedia",
-    label: getT().scout.sources.tokopedia,
-    icon: <ShoppingBag className="h-4 w-4" />,
-    available: true,
-    description: getT().scout.sources.tokopediaDesc,
-  },
-  {
     id: "twitter",
     label: getT().scout.sources.twitter,
     icon: <Twitter className="h-4 w-4" />,
-    available: false,
+    available: false,  // soft-fail: zero results without cookies
     description: getT().scout.sources.twitterDesc,
   },
   {
     id: "threads",
     label: getT().scout.sources.threads,
     icon: <MessagesSquare className="h-4 w-4" />,
-    available: false,
+    available: false,  // soft-fail: zero results without cookies
     description: getT().scout.sources.threadsDesc,
   },
+  // DEPRECATED 2026-06-14: 4 sources removed (google, google_places,
+  // yelp, tokopedia). They cluttered the scout→prospect flow. Code
+  // files kept (with "disabled" comments) so re-enable is just
+  // flipping the registry entry + the SOURCES array.
 ];
 
 const STATUS_BADGE: Record<
@@ -150,7 +122,7 @@ const MAX_RESULTS_OPTIONS = [5, 10, 20, 35, 50] as const;
 export function ScoutPage() {
   const t = useT();
   // Form state
-  const [source, setSource] = useState<ScrapingSource>("google");
+  const [source, setSource] = useState<ScrapingSource>("maps");
   const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
   const [maxResults, setMaxResults] = useState(20);
@@ -598,7 +570,7 @@ export function ScoutPage() {
           ) : recentProspects.length === 0 ? (
             <EmptyState
               className="py-8"
-              icon={<Globe className="h-5 w-5" />}
+              icon={<Sparkles className="h-5 w-5" />}
               title={t.scout.noDiscoveries}
               description={t.scout.noDiscoveriesDesc}
             />

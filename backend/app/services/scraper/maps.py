@@ -48,7 +48,14 @@ class GoogleMapsScraper(BaseScraper):
 
     NAV_TIMEOUT_MS = 15_000
     RESULT_TIMEOUT_MS = 8_000
-    DEFAULT_LIMIT = 15
+    # DEACTIVATED 2026-06-14: the 50-result hard cap was removed
+    # per the user's v1 redesign — "all data saved for enrichment".
+    # The ceil of 1000 is a safety (prevents a runaway search from
+    # returning 10k+ results and pinning the Celery worker). Operators
+    # can pass an explicit `max_results` in the scout job query to
+    # set a lower bound; default is DEFAULT_LIMIT.
+    DEFAULT_LIMIT = 200
+    MAX_HARD_CAP = 1000
     # Overall hard cap so a slow Maps page can't pin the Celery worker
     OVERALL_TIMEOUT_S = 120.0
 
@@ -67,7 +74,10 @@ class GoogleMapsScraper(BaseScraper):
         if not keywords:
             raise ScraperError("Maps: 'keywords' is required")
         location = (query.get("location") or "").strip()
-        max_results = min(int(query.get("max_results") or self.DEFAULT_LIMIT), 50)
+        max_results = min(
+            int(query.get("max_results") or self.DEFAULT_LIMIT),
+            self.MAX_HARD_CAP,
+        )
 
         search_query = f"{keywords} {location}".strip() if location else keywords
         url = "https://www.google.com/maps/search/" + _url_quote(search_query)
