@@ -1,4 +1,4 @@
-import { Building2, Building, Building10, HelpCircle } from "lucide-react";
+import { Building2, Building, Castle, HelpCircle } from "lucide-react";
 import type { Tier } from "@/api/prospects";
 import { cn } from "@/lib/utils";
 import { getT } from "@/i18n";
@@ -50,7 +50,7 @@ export function TierBadge({ tier, confidence, className }: TierBadgeProps) {
       label: t.mid,
     },
     enterprise: {
-      icon: Building10,
+      icon: Castle,
       color: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
       label: t.enterprise,
     },

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -13,40 +14,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.prospect import Prospect
 from app.services.scraper.base import BaseScraper, ScrapedResult
-from app.services.scraper.google import GoogleSearchScraper
-from app.services.scraper.google_places import GooglePlacesScraper
 from app.services.scraper.maps import GoogleMapsScraper
 from app.services.scraper.threads import ThreadsScraper
-from app.services.scraper.tokopedia import TokopediaScraper
 from app.services.scraper.twitter import TwitterScraper
-from app.services.scraper.yelp import YelpScraper
 
 logger = logging.getLogger("clientfinder.scraper")
 
 
-# Scraper registry — source name → class
+# Scraper registry — v1 (per user directive 2026-06-14):
+# Only Google Maps, Twitter, Threads are active. The other 4 sources
+# (google/google_places/yelp/tokopedia) were deactivated because the
+# scout→prospect flow was confused with too many options. The scraper
+# code for those 4 sources is kept (with "disabled 2026-06-14" comments
+# in their files) so they can be re-enabled if/when the UX is right.
+# To re-enable: (1) add the import + registry entry below, (2) add
+# the source to the ScrapingSource Literal in backend/app/schemas/scraping.py,
+# (3) add the source to the SOURCES array in frontend/src/pages/Scout.tsx,
+# (4) add the kill switch in backend/app/core/config.py.
 _SCRAPERS: dict[str, type[BaseScraper]] = {
-    "google": GoogleSearchScraper,
-    "google_places": GooglePlacesScraper,  # Sprint 3C
     "maps": GoogleMapsScraper,
     "twitter": TwitterScraper,
     "threads": ThreadsScraper,
-    "tokopedia": TokopediaScraper,  # Sprint 3C
-    "yelp": YelpScraper,  # Sprint 3C
 }
 
 
 def get_scraper(source: str, **kwargs: Any) -> BaseScraper:
-    """Instantiate the right scraper for a source."""
+    """Instantiate the right scraper for a source.
+
+    Raises ValueError for unknown sources (the dispatcher is strict —
+    this is part of the v1 contract: only 3 sources are wired).
+    """
     cls = _SCRAPERS.get(source)
     if not cls:
         raise ValueError(f"Unknown scraper source: {source}")
-    if source == "google":
-        return cls(base_url=settings.searxng_base_url, **kwargs)
-    if source == "google_places":
-        return cls(api_key=settings.google_places_api_key, **kwargs)
-    if source == "yelp":
-        return cls(api_key=settings.yelp_api_key, **kwargs)
     return cls(**kwargs)
 
 
@@ -55,6 +55,7 @@ async def persist_scraped_to_prospects(
     results: list[ScrapedResult],
     *,
     skip_duplicates: bool = True,
+    scout_run_id: UUID | None = None,
 ) -> int:
     """
     Insert scraped results into the prospects table.
@@ -66,6 +67,11 @@ async def persist_scraped_to_prospects(
         (uq_prospects_company_city) on the table to catch any
         race-condition duplicates (defense in depth)
     Returns: number of NEW prospects actually inserted.
+
+    Sprint 4 PR 2: scout_run_id is stamped on every new prospect
+    so the operator can answer "which ScoutRun found this?".
+    Legacy callers that pass None get the same behavior as before
+    (scout_run_id is nullable + has a default of NULL).
     """
     if not results:
         return 0
@@ -98,6 +104,7 @@ async def persist_scraped_to_prospects(
 
         data = r.to_prospect_dict()
         data["owner_id"] = None
+        data["scout_run_id"] = scout_run_id
         # Plain insert (no ON CONFLICT — the partial unique index
         # would need expression-based conflict target which PG
         # doesn't support; pre-check + index is enough for v1).
@@ -118,6 +125,7 @@ async def persist_scraped_to_prospects(
             try:
                 data = r.to_prospect_dict()
                 data["owner_id"] = None
+                data["scout_run_id"] = scout_run_id
                 db.add(Prospect(**data))
                 await db.commit()
                 inserted += 1

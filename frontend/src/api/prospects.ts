@@ -1,6 +1,62 @@
 import { api } from "./client";
 import type { Prospect, ProspectListResponse } from "@/types";
 
+// Inline types for the ProspectDetailResponse shape.
+// These mirror the backend's Pydantic schemas (see
+// backend/app/models/prospect.py + lead.py) but are kept local
+// to the frontend to avoid coupling the UI to backend model
+// internals.
+export interface TechStack {
+  id: string;
+  cms: string | null;
+  framework: string | null;
+  has_ssl: boolean | null;
+  has_viewport_meta: boolean;
+  payment_gateways: string[];
+  body_bytes_read: number | null;
+  technologies: string[];
+  hosting_provider: string | null;
+  issues: string[];
+  audited_at: string;
+}
+
+export interface PainPoint {
+  id: string;
+  category: string;
+  severity: number;
+  description: string | null;
+  source: string | null;
+}
+
+export interface LeadScore {
+  id: string;
+  grade: string;
+  total: number;
+  total_score: number;     // alias for some callers
+  reasoning: string | null;
+  // 9-factor score breakdown (mirrors backend/app/services/analyzer/scorer.py:ScoreBreakdown)
+  signal_strength: number;
+  pain_severity: number;
+  budget_indicator: number;
+  solution_fit: number;
+  timing_urgency: number;
+  contact_availability: number;
+  personalization_quality: number;
+  tier: number;
+  industry_specificity: number;
+  risk_penalty: number;
+  scored_at: string;
+}
+
+export interface Hook {
+  id: string;
+  hook_text: string;
+  audit_finding: string | null;
+  recommended_service: string | null;
+  confidence: number | null;   // 0.0-1.0 (from T5 LLM analyst)
+  is_used: boolean;
+}
+
 export interface ProspectFilters {
   page?: number;
   per_page?: number;
@@ -14,12 +70,20 @@ export interface ProspectFilters {
 }
 
 export interface ProspectDetailResponse {
-  prospect: ProspectItem;
-  tech_stack: TechStackData | null;
-  pain_points: PainPointItem[];
-  lead_score: LeadScoreData | null;
-  hooks: HookItem[];
+  prospect: Prospect;
+  tech_stack: TechStack | null;
+  pain_points: PainPoint[];
+  lead_score: LeadScore | null;
+  hooks: Hook[];
   signals: SignalItem[];
+  // Sprint 4 PR 3: link to the ScoutRun that found this
+  // prospect. Powers the breadcrumb on ProspectDetail.
+  // Nullable for legacy + manually-imported prospects.
+  scout_run_id?: string | null;
+  // C2 review: the count hint was removed from the breadcrumb
+  // because the /prospects/{id} endpoint doesn't return a
+  // run-level total. The count is visible on the
+  // /scout-runs/:id/results page (Layer 2) instead.
 }
 
 export interface SignalItem {

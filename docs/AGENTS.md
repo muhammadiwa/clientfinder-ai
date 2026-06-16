@@ -756,3 +756,73 @@ Split per phase:
 - T2: CRM Agent (foundation) — 5-7 hari
 - T6: Outreach + Follow-Up — 1-1.5 minggu
 - T7: Reporting Agent — 3-4 hari
+
+---
+
+# Scout → Prospect Flow (Sprint 4 — v1 contract)
+
+> Updated 2026-06-14. The flow was redesigned in 4 PRs (#115, #116, #117, #118) after the user meta-correction in turn 57 ("flow nya salah, kita kembali ke fitur scout dan prospect dulu, kita brainstorming dlu"). The redesign implements the hybrid (C) 2-layer display pattern from the 4-perspective analysis in turn 60.
+
+## 3-source v1 registry
+
+The Scout pipeline uses **3 active sources** (`backend/app/services/scraper/__init__.py:33-49`):
+
+| Source | Type | Soft-fail? | Notes |
+|---|---|---|---|
+| `maps` | Google Maps (Playwright) | No | The only structured business data source |
+| `twitter` | Twikit + cookies | Yes | Zero results without cookies |
+| `threads` | Playwright + cookies | Yes | Zero results without cookies |
+
+**Note on `twitter` vs `threads`** (Sprint 4.1 correction): they share the `SocialPost` output dataclass, but use **different transports** — `twitter` uses Twikit (Python lib for Twitter API), `threads` uses Playwright (browser automation for Threads.net). They also have different cookie schemas: `twitter` uses `auth_token` + `ct0`, `threads` uses `sessionid` (Meta convention). Calling them "the same code path" is incorrect — they diverge at the transport + cookie layer and share only the output schema. A future "improve social scrapers" PR should NOT try to share a base class; the data shapes are aligned but the capture mechanisms are intentionally separate.
+
+**Deactivated sources (4)**: `google` (SearXNG, was 67% noise per the 2026-06-14 audit), `google_places`, `yelp`, `tokopedia`. **Code kept** with `DEPRECATED 2026-06-14` banner. Re-enable is one config flip (registry + Literal + SOURCES + kill switch). This is the "deactivate-not-delete" pattern.
+
+## Auto-enrich is OFF by default
+
+The orchestrator's `enrich_prospect()` no longer auto-fires `social_scan_and_persist` (T9.0 social scan) or `classify_and_persist` (Sprint 3B tier/industry classifier). The auto-fire is gated by `scout_auto_enrich_enabled: bool = False` in `backend/app/core/config.py`. The per-prospect "Enrich" button in the UI is the only way to trigger enrichment by default. This matches the user spec: "hapus dulu proses enrich otomatis kita ulang dari awal lagi".
+
+## max_results cap is lifted
+
+`GoogleMapsScraper.MAX_HARD_CAP = 1000` (was 50). `DEFAULT_LIMIT = 200`. The cap is a Celery runaway guard, not a feature limit. Operator can pass `max_results` in the scout job query to set a lower bound.
+
+## ScoutResult model: Q1=C (reuse prospects 1:1)
+
+**No new ScoutResult table for v1.** A scout result is a virtual view: all prospects with `scout_run_id = :id` plus the full `raw_data` JSONB. For v2, can promote ScoutResult to a real table if operator-pick UX is needed.
+
+The FK is `prospects.scout_run_id → scraping_jobs.id` (ON DELETE SET NULL). Migration: `backend/alembic/versions/9b8f3c4e2a1d_add_scout_run_fk_and_raw_data_index.py`. Index: `ix_prospects_scout_run_id` (btree) + `ix_prospects_raw_data_gin` (GIN, for future `raw_data @> '{"rating": "4.5"}'` queries).
+
+## Maps full raw_data dump
+
+`GoogleMapsScraper._parse_card` now extracts: `rating`, `review_count` (handles `rb`/`ribu`/`k` suffix and ID-locale `.` thousand separator), `hours` ("Buka 24 jam" / "Buka ⋅ Tutup pukul 21.00" / "Tutup permanen"), `price_range` ("$$" / "Rp 50.000–100.000"), `service_options` (Makan di tempat / Bawa pulang / Pesan antar, deduped). All fields go into `extra` → `prospects.raw_data` JSONB. The `HomepageEnricher` merges its keys (`enrichment_ms`, `enrichment_status`, `social`) into the same `extra` dict, so final `raw_data` has BOTH Maps data AND enrichment data.
+
+## 2-layer hybrid C display (Q2/Q3/Q4)
+
+| Layer | Surface | URL | Size |
+|---|---|---|---|
+| Layer 1 | ProspectDetail breadcrumb | inline | 1 line |
+| Layer 2 | ScoutRunResults page | `/scout-runs/:id/results` | paginated, 25/page |
+
+The ProspectDetail page shows a 1-line `ScoutRunBreadcrumb` ("📍 Ditemukan dari ScoutRun #X [Lihat →]"). Click → the dedicated ScoutRunResults page with the full raw data, paginated, sortable. Row click on the table → `/prospects/:id`. The "Link, don't load" pattern (Linear/Notion/Salesforce).
+
+## API surface (v1)
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/v1/scraping/jobs` | List all ScoutRuns (paginated, newest first) |
+| `POST /api/v1/scraping/jobs` | Create a new ScoutRun |
+| `GET /api/v1/scraping/jobs/{id}` | Get single ScoutRun status (for polling) |
+| `POST /api/v1/scraping/jobs/{id}/retry` | Reset + re-enqueue a failed ScoutRun |
+| `DELETE /api/v1/scraping/jobs/{id}` | Delete a ScoutRun (sets prospect.scout_run_id to NULL via ON DELETE SET NULL) |
+| `GET /api/v1/scraping/scout-runs/{run_id}/results` | **PR 3 (Sprint 4)** — paginated prospects for a ScoutRun. IDOR-safe (filters by `created_by == current_user.id`). Filters soft-deleted prospects. Stable secondary sort by `Prospect.id`. |
+| `GET /api/v1/scraping/presets` | Quick-start presets |
+
+## Testing pattern (v1)
+
+The codebase uses **source-inspection tests** (no async client fixtures) for endpoint contract tests. Example: `backend/app/tests/api/test_scout_run_results.py` verifies the endpoint is registered, has the right signature, returns 400/404 for invalid input, and uses `ProspectOut.model_dump(mode="json")`. The `model_validate` approach is used for schema tests. **No e2e Playwright tests for the scout→prospect flow yet** (the `frontend/tests/a11y/` dir exists for axe-core a11y tests, but the breadcrumb click flow is not covered). Add coverage in a future polish PR.
+
+## Known deferred items (post-Sprint 4)
+
+- **CONCURRENTLY for GIN index**: at v1 scale (hundreds of prospects) the `ACCESS EXCLUSIVE` lock during CREATE INDEX is negligible. At >100k rows, the migration should be split into a non-transactional `CREATE INDEX CONCURRENTLY` variant.
+- **Persisted `inserted` over-count after IntegrityError fallback**: pre-existing in `persist_scraped_to_prospects` (`backend/app/services/scraper/__init__.py:114-135`). Not caused by this redesign.
+- **Concurrent `_run_job` for the same `job_id`**: pre-existing. No `SELECT ... FOR UPDATE` claim on the job row.
+- **Fallback re-attempt skips pre-check**: pre-existing. The unique index catches the race, but the pre-check should re-run inside the fallback.

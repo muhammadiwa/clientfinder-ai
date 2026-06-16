@@ -18,6 +18,16 @@ Per R7 (pragmatic-legal): Google Places API is a paid
 service, but has a generous $200/mo free tier (~28k calls).
 Set the env var and enable the kill switch to activate.
 """
+
+# DEPRECATED 2026-06-14: this source was removed from the
+# v1 scout flow (the scout→prospect UX was confused with too many
+# sources). Kept as commented code so re-enable is just flipping
+# the registry entry in backend/app/services/scraper/__init__.py.
+# To re-enable: add the source to _SCRAPERS, the ScrapingSource
+# Literal in backend/app/schemas/scraping.py, the SOURCES array
+# in frontend/src/pages/Scout.tsx, and the matching kill switch in
+# backend/app/core/config.py.
+
 from __future__ import annotations
 
 import logging

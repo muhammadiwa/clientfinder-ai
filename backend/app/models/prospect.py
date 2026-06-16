@@ -72,6 +72,20 @@ class Prospect(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     source_query: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     raw_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    # Sprint 4 PR 2: scout_run_id FK links each prospect back to
+    # the ScoutRun (scraping_jobs row) that discovered it. Nullable
+    # for legacy prospects (pre-PR-2) and manually-imported ones.
+    # ON DELETE SET NULL so deleting a ScoutRun doesn't cascade
+    # and lose the prospects.
+    # NOTE: no `index=True` here — the migration (9b8f3c4e2a1d)
+    # owns the index with the specific name `ix_prospects_scout_run_id`.
+    # `index=True` would auto-generate a duplicate index in
+    # SQLAlchemy create_all paths.
+    scout_run_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("scraping_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Pipeline status
     status: Mapped[str] = mapped_column(

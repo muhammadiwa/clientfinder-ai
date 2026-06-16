@@ -231,7 +231,6 @@ function EnrollmentRow({
   const seqName = seq?.name || enrollment.sequence_id.slice(0, 8);
   const isActive = enrollment.status === "active";
   const isPaused = enrollment.status === "paused";
-  const nextStep = enrollment.current_step + 1;
   return (
     <li
       data-testid="enrollment-item"

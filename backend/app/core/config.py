@@ -137,32 +137,28 @@ class Settings(BaseSettings):
     scraper_max_concurrent: int = 2
     scraper_proxy_enabled: bool = False
 
-    # Sprint 1 / Phase 1.1 — Google Scout pre-filter + kill switch
-    # Per the 2026-06-14 audit, ~67% of Google Search results are noise
-    # (gibberish spam, listicles, marketplaces). The pre-filter cuts noise
-    # without an HTTP fetch. The kill switch lets ops disable Google
-    # entirely if the result quality ever degrades again.
+    # Sprint 1 / Phase 1.1 — Google Search kill switch
+    # (DEPRECATED 2026-06-14: the noisy SearXNG-backed Google source
+    # was removed from the scout flow. Kept here as a stub for
+    # migration history. The prefilter.py utility was also removed.)
     scout_google_enabled: bool = False
     scout_google_prefilter_enabled: bool = True
     scout_google_max_results_per_query: int = 50  # cap before prefilter
 
-    # Sprint 3C — Structured business sources (replacing noisy SearXNG)
-    # Google Places API: returns structured place data (name, address,
-    # phone, website, rating, opening hours). Far cleaner than SearXNG
-    # results for the UMKM use case.
+    # DEPRECATED 2026-06-14: 3C source kill switches
+    # (Google Places, Yelp, Tokopedia). Kept as stubs for re-enable.
+    # To re-enable, restore the matching field in `_SCRAPERS`
+    # (backend/app/services/scraper/__init__.py) and the SOURCES array
+    # in frontend/src/pages/Scout.tsx.
     google_places_api_key: str = ""
     scout_google_places_enabled: bool = False
     scout_google_places_max_per_query: int = 30
 
-    # Yelp Fusion API: businesses with reviews + ratings. Good for
-    # F&B, retail, klinik (industries Yelp covers well).
     yelp_api_key: str = ""
     scout_yelp_enabled: bool = False
     scout_yelp_max_per_query: int = 30
 
     # Sprint 3C sub-task 2 — Tokopedia seller search (Playwright)
-    # No public API; uses browser automation. Soft-fail by default —
-    # operator opts in by setting scout_tokopedia_enabled=true.
     scout_tokopedia_enabled: bool = False
     scout_tokopedia_max_per_query: int = 20
     scout_tokopedia_headless: bool = True
@@ -173,6 +169,15 @@ class Settings(BaseSettings):
     scout_enrichment_page_timeout_s: int = 12
     scout_enrichment_overall_timeout_s: int = 240
     scout_enrichment_max_concurrent: int = 1
+    # Sprint 4 / PR 1 followup: auto-enrich hook (per-prospect
+    # website audit + scoring) was removed in PR 115 but the
+    # wiring in scraping_tasks._run_job was still auto-firing
+    # enrich_prospect_task.delay() for every new prospect. This
+    # kill switch controls the auto-fire path. v1 = False
+    # (opt-in via the per-prospect "Enrich" button in the UI).
+    # Aligns with the user spec: "hapus dulu proses enrich
+    # otomatis kita ulang dari awal lagi".
+    scout_auto_enrich_enabled: bool = False
 
     # Outreach
     outreach_auto_approve: bool = False

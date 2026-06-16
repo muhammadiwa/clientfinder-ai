@@ -2,14 +2,17 @@ import { api } from "./client";
 import type {
   Message,
   MessageChannel,
-  MessageListResponse,
   OutreachStats,
   Template,
   TemplateListResponse,
   Sequence,
   SequenceListResponse,
   SequenceStep,
+  MessageListResponse,
 } from "@/types";
+
+// SequenceTimeSeries types live here (outreach.ts) since they're
+// outreach-domain. Imported by useOutreach.ts.
 
 export interface MessageCreate {
   prospect_id: string;
@@ -179,6 +182,10 @@ export async function updateTemplate(
 export async function deleteTemplate(id: string): Promise<void> {
   await api.delete(`/templates/${id}`);
 }
+
+// Re-export Sequence for callers that already import it from "@/api/outreach"
+export type { Sequence, SequenceStep, SequenceListResponse } from "@/types";
+
 
 // --- Sequences ---
 

@@ -48,7 +48,14 @@ class GoogleMapsScraper(BaseScraper):
 
     NAV_TIMEOUT_MS = 15_000
     RESULT_TIMEOUT_MS = 8_000
-    DEFAULT_LIMIT = 15
+    # DEACTIVATED 2026-06-14: the 50-result hard cap was removed
+    # per the user's v1 redesign — "all data saved for enrichment".
+    # The ceil of 1000 is a safety (prevents a runaway search from
+    # returning 10k+ results and pinning the Celery worker). Operators
+    # can pass an explicit `max_results` in the scout job query to
+    # set a lower bound; default is DEFAULT_LIMIT.
+    DEFAULT_LIMIT = 200
+    MAX_HARD_CAP = 1000
     # Overall hard cap so a slow Maps page can't pin the Celery worker
     OVERALL_TIMEOUT_S = 120.0
 
@@ -67,7 +74,19 @@ class GoogleMapsScraper(BaseScraper):
         if not keywords:
             raise ScraperError("Maps: 'keywords' is required")
         location = (query.get("location") or "").strip()
-        max_results = min(int(query.get("max_results") or self.DEFAULT_LIMIT), 50)
+        # Guard against negative / zero max_results. The Pydantic
+        # schema enforces ge=1, le=100, but the scraper is also
+        # called from the Celery task with a raw query dict where
+        # a corrupted value could slip through. Without the max(1, …)
+        # guard, max_results=-5 would break the loop on iter 0 and
+        # silently return 0 results.
+        max_results = max(
+            1,
+            min(
+                int(query.get("max_results") or self.DEFAULT_LIMIT),
+                self.MAX_HARD_CAP,
+            ),
+        )
 
         search_query = f"{keywords} {location}".strip() if location else keywords
         url = "https://www.google.com/maps/search/" + _url_quote(search_query)
@@ -165,9 +184,20 @@ class GoogleMapsScraper(BaseScraper):
 
         # Address + phone are often in the card text below the name
         full_text = (await card.inner_text()) or ""
-        # First line of the text after the name is usually the address
+        # Sprint 4 PR 2: extract the FULL Places data, not just
+        # address + phone. The user spec (turn 58): "untuk google
+        # maps semua datanya di simpan contoh sosmed nya juga dll
+        # yang berkaitan dan datanya berguna untuk dijadikan
+        # prospek" — save ALL Google Maps data. The full payload
+        # lands in prospects.raw_data JSONB and powers the
+        # breadcrumb in PR 3 + the /scout-runs/:id page.
         address = _extract_address(full_text)
         phone = _extract_phone(full_text)
+        rating = _extract_rating(full_text)
+        review_count = _extract_review_count(full_text)
+        hours = _extract_hours(full_text)
+        price_range = _extract_price_range(full_text)
+        service_options = _extract_service_options(full_text)
 
         # Link with href to the actual website
         website = None
@@ -179,6 +209,19 @@ class GoogleMapsScraper(BaseScraper):
             if href and "google.com" not in href:
                 website = href
 
+        # Build the full Places extra payload. Sprint 4 PR 2
+        # forwards this whole dict to prospects.raw_data.
+        extra: dict[str, Any] = {
+            "raw_address": address,
+            "rating": rating,
+            "review_count": review_count,
+            "hours": hours,
+            "price_range": price_range,
+            "service_options": service_options,
+        }
+        # Drop None values to keep raw_data tight
+        extra = {k: v for k, v in extra.items() if v is not None}
+
         return ScrapedResult(
             company_name=name[:255],
             website=website[:500] if website else None,
@@ -187,13 +230,57 @@ class GoogleMapsScraper(BaseScraper):
             description=None,
             source_url=None,
             source="maps",
-            extra={"raw_address": address} if address else {},
+            extra=extra,
         )
 
 
 _PHONE_RE = re.compile(r"(\+?\d[\d\s\-]{7,}\d)")
+# Address hint keywords. Uses a negative lookahead `(?!\w)` instead of
+# `\b` to anchor the match. `\b` fails after "Jl." (period is non-word
+# so .→space has no boundary), and removing `\b` entirely lets
+# "Jalanisme" / "Jlr Coffee" match. The lookahead is the tightest
+# bound that works for both period-ending and word-ending keywords.
 _ADDR_HINT = re.compile(
-    r"(Jl\.|Jalan|Ruko|Komp\.|Kompleks|Blok|No\.|Jl\s|Kel\.|Kec\.|Kota\s|Kab\.|Jl.)\b",
+    r"(Jl\.|Jalan|Ruko|Komp\.|Kompleks|Blok|No\.|Jl\s|Kel\.|Kec\.|Kota\s|Kab\.)(?!\w)",
+    re.IGNORECASE,
+)
+# Maps rating is shown as "4,5" or "4.5" (Indonesian locale uses comma).
+# It's followed by either a star icon or "(N ulasan)" pattern. Rating
+# values are bounded to [1,5] (Maps max is 5); a leading `\b` prevents
+# matching inside "10" or "50".
+_RATING_RE = re.compile(
+    r"\b([1-5](?:[.,][0-9])?)\s*(?:★|\(\s*[\d.,]+\s*ulasan\b)",
+    re.IGNORECASE,
+)
+# Maps review count: "(123 ulasan)" or "1,2 rb ulasan" or "1.000 ulasan"
+# (Indonesian thousands separator, NO `rb` suffix — Maps uses bare dots).
+_REVIEW_RE = re.compile(
+    r"([\d.,]+)\s*(rb|ribu|k|K)?\s*ulasan\b",
+    re.IGNORECASE,
+)
+# Maps hours: "Buka ⋅ Tutup pukul 21.00", "Buka 24 jam",
+# "Tutup ⋅ Buka pukul 08.00", or "Tutup permanen"
+_HOURS_RE = re.compile(
+    r"(Buka\s*⋅\s*Tutup\s*pukul\s*[\d:.]+|"
+    r"Buka\s*24\s*jam|"
+    r"Tutup\s*⋅\s*Buka\s*pukul\s*[\d:.]+|"
+    r"Tutup\s*permanen)",
+    re.IGNORECASE,
+)
+# Price range: "$$" / "$$$" / "Rp 50.000–100.000" / "Rp 50 rb".
+# Anchored with `(?:^|(?<=\s))` to require the match to start at
+# the beginning of a token. The trailing `(?!\w)` (NOT `\b`) is
+# required for `$$` at end-of-line — `\b` fails at the transition
+# from non-word to nothing (end of input).
+_PRICE_RE = re.compile(
+    r"(?:^|(?<=\s))(\$+(?!\w)|Rp\.?\s*[\d.,]+(?:\s*[\u2013\u2014\-]\s*[\d.,]+)?(?:\s*(?:rb|ribu))?)",
+    re.IGNORECASE,
+)
+# Service options: "Makan di tempat", "Bawa pulang", "Pesan antar",
+# "Layanan drive-through", "Pengiriman tanpa kontak"
+_SERVICE_OPT_RE = re.compile(
+    r"(Makan di tempat|Bawa pulang|Pesan antar|Layanan drive-through|"
+    r"Pengiriman tanpa kontak|Dine-in|Takeaway|Delivery)",
     re.IGNORECASE,
 )
 
@@ -213,6 +300,98 @@ def _extract_address(text: str) -> str | None:
         if _ADDR_HINT.search(line) and 8 < len(line.strip()) < 200:
             return line.strip()
     return None
+
+
+def _extract_rating(text: str) -> float | None:
+    """Extract Maps rating (e.g. "4,5") from card text.
+
+    Returns a float in [1.0, 5.0] (Maps max is 5). The regex
+    enforces the upper bound; ratings outside this range are
+    treated as garbage. Indonesian locale uses comma as the
+    decimal separator ("4,5") — converted to float via dot.
+    """
+    m = _RATING_RE.search(text)
+    if m:
+        return float(m.group(1).replace(",", "."))
+    return None
+
+
+def _extract_review_count(text: str) -> int | None:
+    """Extract Maps review count.
+
+    Handles the Indonesian number-formatting ambiguity:
+    - `"1.000 ulasan"` (ID thousands, no suffix) → 1000
+    - `"1,000 ulasan"` (English thousands) → 1000
+    - `"500 ulasan"` → 500
+    - `"1,2 rb ulasan"` (ID decimal + rb suffix) → 1200
+    - `"1.2 ribu ulasan"` (English decimal + ribu) → 1200
+    - `"10.000 ulasan"` (ID thousands, the "10.000" trap) → 10000
+
+    The rule: if `rb`/`ribu`/`k` suffix is present, the captured
+    number is decimal (comma → dot, multiply by 1000). Otherwise
+    all separators (`.` and `,`) are thousands — strip them.
+    Review counts are integers, so decimals without suffix are
+    treated as thousands.
+    """
+    m = _REVIEW_RE.search(text)
+    if not m:
+        return None
+    number_str = m.group(1)
+    suffix = (m.group(2) or "").lower()
+    if suffix in ("rb", "ribu", "k"):
+        # Decimal number + multiplier suffix
+        try:
+            n = float(number_str.replace(",", "."))
+        except ValueError:
+            return None
+        n *= 1000
+    else:
+        # No suffix: both `.` and `,` are thousands separators.
+        # Review counts are integers, so a bare decimal makes no sense.
+        try:
+            n = int(number_str.replace(".", "").replace(",", ""))
+        except ValueError:
+            return None
+    return int(n)
+
+
+def _extract_hours(text: str) -> str | None:
+    """Extract Maps opening hours string.
+
+    Examples: "Buka ⋅ Tutup pukul 21.00", "Buka 24 jam",
+    "Tutup ⋅ Buka pukul 08.00", "Tutup permanen".
+    """
+    m = _HOURS_RE.search(text)
+    return m.group(1).strip() if m else None
+
+
+def _extract_price_range(text: str) -> str | None:
+    """Extract Maps price range indicator.
+
+    Examples: "$$", "$$$", "Rp 50.000–100.000", "Rp 50 rb".
+    """
+    m = _PRICE_RE.search(text)
+    return m.group(1).strip() if m else None
+
+
+def _extract_service_options(text: str) -> list[str] | None:
+    """Extract Maps service options (dine-in / takeaway / delivery).
+
+    Returns a list of normalized option labels, or None if no
+    service options found.
+    """
+    matches = _SERVICE_OPT_RE.findall(text)
+    if not matches:
+        return None
+    # Deduplicate (case-insensitive) while preserving order
+    seen: set[str] = set()
+    result: list[str] = []
+    for m in matches:
+        key = m.lower()
+        if key not in seen:
+            seen.add(key)
+            result.append(m)
+    return result
 
 
 def _url_quote(s: str) -> str:

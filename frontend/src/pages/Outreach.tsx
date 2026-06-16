@@ -48,10 +48,11 @@ import { getProspectDetail } from "@/api/prospects";
 import { useT } from "@/i18n";
 import { formatApiError } from "@/lib/formatError";
 import { cn } from "@/lib/utils";
+import type { Hook } from "@/api/prospects";
 import type { Message, MessageChannel, OutreachStats, Prospect, Template } from "@/types";
 
 type Tab = "pending_approval" | "drafts" | "sent" | "failed";
-type FilterChannel = "all" | MessageChannel;
+type FilterChannel = "all" | MessageChannel | string;
 type FilterGrade = "all" | "A" | "B" | "C" | "D";
 
 // --- Style maps ---
@@ -198,7 +199,7 @@ export function OutreachPage() {
   // state for the optimistic-UI helpers to write to.
   const messagesQuery = useMessages({
     tab: tab as "all" | "drafts" | "pending_approval" | "sent" | "failed",
-    filterChannel,
+    filterChannel: filterChannel as MessageChannel,
     filterGrade,
   });
   // Sync the query data into the local `messages` state
@@ -317,10 +318,11 @@ export function OutreachPage() {
     setExpandedId(null);
   }, [tab, filterChannel, filterGrade]);
 
-  // Hooks for selected prospect (composer)
-  const [prospectHooks, setProspectHooks] = useState<
-    { id: string; hook_text: string; recommended_service: string | null; confidence: number }[]
-  >([]);
+  // Hooks for selected prospect (composer). Uses the full Hook
+  // type from @/types; the backend may return null for
+  // Hook.confidence (older LLM analysts), which the display
+  // code handles with `?? 0.5`.
+  const [prospectHooks, setProspectHooks] = useState<Hook[]>([]);
   useEffect(() => {
     if (!composerProspectId) {
       setProspectHooks([]);
@@ -329,14 +331,7 @@ export function OutreachPage() {
     }
     getProspectDetail(composerProspectId)
       .then((d) => {
-        setProspectHooks(
-          d.hooks.map((h) => ({
-            id: h.id,
-            hook_text: h.hook_text,
-            recommended_service: h.recommended_service,
-            confidence: h.confidence,
-          })),
-        );
+        setProspectHooks(d.hooks);
         setComposerHookId(d.hooks[0]?.id ?? "");
       })
       .catch(() => setProspectHooks([]));
@@ -571,7 +566,7 @@ export function OutreachPage() {
       const payload: MessageGenerateRequest = {
         prospect_id: composerProspectId,
         hook_id: composerHookId,
-        channel: composerChannel,
+        channel: composerChannel as MessageChannel,
         template_id: composerTemplateId || undefined,
       };
       // false = preview only (don't create draft)
@@ -610,7 +605,7 @@ export function OutreachPage() {
     try {
       const m = await createMessage({
         prospect_id: composerProspectId,
-        channel: composerChannel,
+        channel: composerChannel as MessageChannel,
         subject: composerSubject || "(no subject)",
         body: composerBody,
         hook_id: composerHookId,
@@ -1332,7 +1327,7 @@ function HookCard({
   selected,
   onSelect,
 }: {
-  hook: { id: string; hook_text: string; recommended_service: string | null; confidence: number };
+  hook: Hook;
   selected: boolean;
   onSelect: () => void;
 }) {

@@ -79,7 +79,14 @@ async def _run_job(job_id_str: str) -> int:
                         "timeout": 0,
                     }
 
-            inserted = await persist_scraped_to_prospects(db, results)
+            # Sprint 4 PR 2: stamp every new prospect with
+            # scout_run_id = the ScrapingJob UUID, so the operator
+            # can answer "which ScoutRun found this prospect?"
+            # (the link drives the breadcrumb in PR 3 + the
+            # /scout-runs/:id page).
+            inserted = await persist_scraped_to_prospects(
+                db, results, scout_run_id=jid
+            )
 
             # Mark completed
             job.status = "completed"
@@ -104,7 +111,13 @@ async def _run_job(job_id_str: str) -> int:
 
             # T5: auto-enqueue analysis for the just-inserted
             # prospects. We need their DB IDs, so re-query.
-            if inserted > 0:
+            # Sprint 4 / PR 1 followup: gated by
+            # scout_auto_enrich_enabled (default False). v1
+            # does NOT auto-enrich — operator clicks "Enrich"
+            # on ProspectDetail. Aligns with the user spec
+            # "hapus dulu proses enrich otomatis kita ulang
+            # dari awal lagi".
+            if inserted > 0 and settings.scout_auto_enrich_enabled:
                 try:
                     from app.models.prospect import Prospect
                     from app.tasks.analysis_tasks import enrich_prospect_task

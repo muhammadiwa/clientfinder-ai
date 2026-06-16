@@ -4,7 +4,7 @@ Scraping router — endpoints for Scout module (T4)
 from typing import Annotated
 
 from celery.exceptions import OperationalError
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
 
@@ -104,15 +104,23 @@ async def list_scraping_jobs(
     page: Annotated[int, "Page"] = 1,
     per_page: Annotated[int, "Per page"] = 20,
 ) -> ScrapingJobListResponse:
-    """List all scraping jobs, newest first."""
+    """List all scraping jobs owned by the current user, newest first.
+
+    Sprint 4.1 followup: filtered by created_by to prevent
+    cross-tenant data leak. Same IDOR fix as the
+    /scout-runs/{id}/results endpoint from PR 3.
+    """
     per_page = min(max(per_page, 1), 100)
     offset = (max(page, 1) - 1) * per_page
 
-    count_q = select(func.count(ScrapingJob.id))
+    count_q = select(func.count(ScrapingJob.id)).where(
+        ScrapingJob.created_by == current_user.id
+    )
     total = (await db.execute(count_q)).scalar() or 0
 
     q = (
         select(ScrapingJob)
+        .where(ScrapingJob.created_by == current_user.id)
         .order_by(desc(ScrapingJob.created_at))
         .offset(offset)
         .limit(per_page)
@@ -131,7 +139,12 @@ async def get_scraping_job(
     current_user: CurrentUser,
     db: DB,
 ) -> ScrapingJob:
-    """Get a single scraping job by ID."""
+    """Get a single scraping job by ID.
+
+    Sprint 4.1 followup: filtered by created_by. Jobs owned
+    by other users (or with NULL created_by) return 404 —
+    we don't disclose existence.
+    """
     from uuid import UUID
 
     try:
@@ -140,11 +153,98 @@ async def get_scraping_job(
         raise HTTPException(status_code=400, detail="Invalid job ID")
 
     job = (
-        await db.execute(select(ScrapingJob).where(ScrapingJob.id == jid))
+        await db.execute(
+            select(ScrapingJob)
+            .where(ScrapingJob.id == jid)
+            .where(ScrapingJob.created_by == current_user.id)
+        )
     ).scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+@router.get("/scout-runs/{run_id}/results")
+async def get_scout_run_results(
+    run_id: str,
+    current_user: CurrentUser,
+    db: DB,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
+) -> dict:
+    """Sprint 4 PR 3: paginated raw results for a ScoutRun.
+
+    Returns the ScoutRun metadata + a page of prospects
+    (filtered by scout_run_id, sorted by created_at DESC).
+    Each result includes the full raw_data JSONB so the page
+    can show rating / review_count / hours etc. without an
+    extra round-trip per row.
+
+    Used by the /scout-runs/:id/results frontend page.
+
+    Security (C1 review): filtered by created_by to prevent
+    cross-tenant data leak. Runs with NULL created_by (legacy
+    or orphaned) are treated as inaccessible — 404.
+    """
+    from uuid import UUID
+
+    from app.models.prospect import Prospect
+    from app.schemas.prospect import ProspectOut
+
+    try:
+        rid = UUID(run_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid run ID")
+
+    job = (
+        await db.execute(
+            select(ScrapingJob)
+            .where(ScrapingJob.id == rid)
+            .where(ScrapingJob.created_by == current_user.id)
+        )
+    ).scalar_one_or_none()
+    if not job:
+        # M10: generic message — don't leak the UUID to the user
+        raise HTTPException(status_code=404, detail="ScoutRun not found")
+
+    # I3: stable secondary sort key (created_at can tie on batch inserts)
+    # I6: filter out soft-deleted prospects (otherwise row click → 404)
+    base_filter = [
+        Prospect.scout_run_id == rid,
+        Prospect.deleted_at.is_(None),
+    ]
+    total_q = select(func.count(Prospect.id)).where(*base_filter)
+    total = (await db.execute(total_q)).scalar_one()
+
+    offset = (page - 1) * per_page
+    results_q = (
+        select(Prospect)
+        .where(*base_filter)
+        .order_by(Prospect.created_at.desc(), Prospect.id.asc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    prospects = (await db.execute(results_q)).scalars().all()
+
+    pages = (total + per_page - 1) // per_page if per_page else 1
+    return {
+        "run": {
+            "id": str(job.id),
+            "source": job.source,
+            "query": job.query,
+            "status": job.status,
+            "prospects_found": job.prospects_found,
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "error_message": job.error_message,
+        },
+        "results": [ProspectOut.model_validate(p).model_dump(mode="json") for p in prospects],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pages,
+    }
 
 
 @router.post("/jobs/{job_id}/retry", response_model=ScrapingJobOut)
@@ -153,7 +253,11 @@ async def retry_scraping_job(
     current_user: CurrentUser,
     db: DB,
 ) -> ScrapingJob:
-    """Retry a failed (or completed) scraping job. Resets to pending."""
+    """Retry a failed (or completed) scraping job. Resets to pending.
+
+    Sprint 4.1 followup: filtered by created_by. Can't retry
+    another user's job (returns 404).
+    """
     from uuid import UUID
 
     try:
@@ -162,10 +266,14 @@ async def retry_scraping_job(
         raise HTTPException(status_code=400, detail="Invalid job ID")
 
     job = (
-        await db.execute(select(ScrapingJob).where(ScrapingJob.id == jid))
+        await db.execute(
+            select(ScrapingJob)
+            .where(ScrapingJob.id == jid)
+            .where(ScrapingJob.created_by == current_user.id)
+        )
     ).scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        raise HTTPException(status_code=404, detail="Job not found")
 
     job.status = "pending"
     job.error_message = None
@@ -190,7 +298,11 @@ async def delete_scraping_job(
     current_user: CurrentUser,
     db: DB,
 ) -> None:
-    """Delete a scraping job. Logs the deletion to activity (P1-B11 fix)."""
+    """Delete a scraping job. Logs the deletion to activity (P1-B11 fix).
+
+    Sprint 4.1 followup: filtered by created_by. Can't
+    delete another user's job (returns 404).
+    """
     from uuid import UUID
 
     try:
@@ -199,10 +311,14 @@ async def delete_scraping_job(
         raise HTTPException(status_code=400, detail="Invalid job ID")
 
     job = (
-        await db.execute(select(ScrapingJob).where(ScrapingJob.id == jid))
+        await db.execute(
+            select(ScrapingJob)
+            .where(ScrapingJob.id == jid)
+            .where(ScrapingJob.created_by == current_user.id)
+        )
     ).scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        raise HTTPException(status_code=404, detail="Job not found")
 
     # Log the deletion BEFORE removing the job (so we still have
     # the source for the activity record).
@@ -233,8 +349,8 @@ async def list_scraping_presets(
     return [
         ScrapingPresetOut(
             id="preset-klinik-jabodetabek",
-            name="Klinik Gigi — Jabodetabek",
-            source="google",
+            name="Klinik Gigi (Maps) — Jabodetabek",
+            source="maps",
             query=ScrapingQuery(
                 keywords="klinik gigi", location="Jabodetabek", max_results=30
             ),

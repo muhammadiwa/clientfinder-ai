@@ -14,6 +14,18 @@ applied to every result. The 2026-06-14 audit showed ~67% noise
 for Indonesian UMKM queries; the pre-filter is the cheapest
 way to cut that without disabling Google entirely.
 """
+
+# DEPRECATED 2026-06-14: this source was removed from the
+# v1 scout flow (the scout→prospect UX was confused with too many
+# sources). Kept as commented code so re-enable is just flipping
+# the registry entry in backend/app/services/scraper/__init__.py.
+# To re-enable: add the source to _SCRAPERS, the ScrapingSource
+# Literal in backend/app/schemas/scraping.py, the SOURCES array
+# in frontend/src/pages/Scout.tsx, and the matching kill switch in
+# backend/app/core/config.py. Also: restore prefilter.py (it was
+# deleted in PR 115) OR set scout_google_prefilter_enabled=False
+# to skip the pre-filter. Re-enable requires all 5 steps.
+
 from __future__ import annotations
 
 import logging
@@ -25,7 +37,19 @@ import httpx
 
 from app.core.config import settings
 from app.services.scraper.base import BaseScraper, ScrapedResult, ScraperError
-from app.services.scraper.prefilter import prefilter_google_results
+# prefilter.py was DELETED in PR 115 (scout-deconstruct). The Google
+# Search source was deactivated but its code file was kept per the
+# project's "deactivate-not-delete" pattern (see docs/AGENTS.md). We
+# import defensively so the module is still importable for re-enable.
+# If prefilter.py is restored (re-enable step 5), this falls back to
+# the real implementation automatically.
+try:
+    from app.services.scraper.prefilter import prefilter_google_results
+
+    _PREFILTER_AVAILABLE = True
+except ImportError:
+    prefilter_google_results = None  # type: ignore[assignment]
+    _PREFILTER_AVAILABLE = False
 
 logger = logging.getLogger("clientfinder.scraper.google")
 
@@ -95,7 +119,7 @@ class GoogleSearchScraper(BaseScraper):
         # parsing into ScrapedResult. Drops noise at the gate.
         prefilter_enabled = settings.scout_google_prefilter_enabled
         rejected_counts: dict[str, int] = {}
-        if prefilter_enabled:
+        if prefilter_enabled and _PREFILTER_AVAILABLE and prefilter_google_results is not None:
             filtered = prefilter_google_results(results)
             kept_results: list[dict] = []
             for r, drop_reason in filtered:

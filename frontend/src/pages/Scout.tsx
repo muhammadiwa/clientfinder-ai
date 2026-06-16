@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   MapPin,
@@ -14,15 +15,12 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Globe,
   Twitter,
   MessagesSquare,
-  MapPinned,
-  Star,
-  ShoppingBag,
   Sparkles as SparklesIcon,
   ArrowRight,
   Lock,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -66,20 +64,6 @@ interface SourceOption {
 
 const SOURCES: SourceOption[] = [
   {
-    id: "google",
-    label: getT().scout.sources.google,
-    icon: <Globe className="h-4 w-4" />,
-    available: true,
-    description: getT().scout.sources.googleDesc,
-  },
-  {
-    id: "google_places",
-    label: getT().scout.sources.googlePlaces,
-    icon: <MapPinned className="h-4 w-4" />,
-    available: true,
-    description: getT().scout.sources.googlePlacesDesc,
-  },
-  {
     id: "maps",
     label: getT().scout.sources.maps,
     icon: <MapPin className="h-4 w-4" />,
@@ -87,33 +71,23 @@ const SOURCES: SourceOption[] = [
     description: getT().scout.sources.mapsDesc,
   },
   {
-    id: "yelp",
-    label: getT().scout.sources.yelp,
-    icon: <Star className="h-4 w-4" />,
-    available: true,
-    description: getT().scout.sources.yelpDesc,
-  },
-  {
-    id: "tokopedia",
-    label: getT().scout.sources.tokopedia,
-    icon: <ShoppingBag className="h-4 w-4" />,
-    available: true,
-    description: getT().scout.sources.tokopediaDesc,
-  },
-  {
     id: "twitter",
     label: getT().scout.sources.twitter,
     icon: <Twitter className="h-4 w-4" />,
-    available: false,
+    available: false,  // soft-fail: zero results without cookies
     description: getT().scout.sources.twitterDesc,
   },
   {
     id: "threads",
     label: getT().scout.sources.threads,
     icon: <MessagesSquare className="h-4 w-4" />,
-    available: false,
+    available: false,  // soft-fail: zero results without cookies
     description: getT().scout.sources.threadsDesc,
   },
+  // DEPRECATED 2026-06-14: 4 sources removed (google, google_places,
+  // yelp, tokopedia). They cluttered the scout→prospect flow. Code
+  // files kept (with "disabled" comments) so re-enable is just
+  // flipping the registry entry + the SOURCES array.
 ];
 
 const STATUS_BADGE: Record<
@@ -144,13 +118,18 @@ const STATUS_BADGE: Record<
 
 const POLL_INTERVAL_MS = 3_000;
 
-// Quick-step max results options (P2-A4: replaces slider with chips)
-const MAX_RESULTS_OPTIONS = [5, 10, 20, 35, 50] as const;
+// Quick-step max results options (P2-A4: replaces slider with chips).
+// Sprint 4 / PR 1 followup: extended to 1000 to match the
+// backend MAX_HARD_CAP. Per the v1 redesign — "all data saved
+// for enrichment, no max results cap". Backend DEFAULT_LIMIT=200
+// is used when no value is given.
+const MAX_RESULTS_OPTIONS = [5, 10, 20, 50, 100, 250, 500, 1000] as const;
 
 export function ScoutPage() {
   const t = useT();
+  const navigate = useNavigate();
   // Form state
-  const [source, setSource] = useState<ScrapingSource>("google");
+  const [source, setSource] = useState<ScrapingSource>("maps");
   const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
   const [maxResults, setMaxResults] = useState(20);
@@ -559,14 +538,15 @@ export function ScoutPage() {
               />
             ) : (
               <div className="space-y-2 max-h-[480px] overflow-y-auto -mx-1 px-1">
-                {jobs.slice(0, 10).map((job) => (
-                  <JobRow
-                    key={job.id}
-                    job={job}
-                    onRetry={handleRetry}
-                    onDelete={handleDelete}
-                  />
-                ))}
+                  {jobs.slice(0, 10).map((job) => (
+                    <JobRow
+                      key={job.id}
+                      job={job}
+                      onRetry={handleRetry}
+                      onDelete={handleDelete}
+                      onView={(id) => navigate(`/scout-runs/${id}/results`)}
+                    />
+                  ))}
               </div>
             )}
           </CardContent>
@@ -598,7 +578,7 @@ export function ScoutPage() {
           ) : recentProspects.length === 0 ? (
             <EmptyState
               className="py-8"
-              icon={<Globe className="h-5 w-5" />}
+              icon={<Sparkles className="h-5 w-5" />}
               title={t.scout.noDiscoveries}
               description={t.scout.noDiscoveriesDesc}
             />
@@ -645,9 +625,10 @@ interface JobRowProps {
   job: ScrapingJob;
   onRetry: (id: string) => void;
   onDelete: (id: string) => void;
+  onView: (id: string) => void;
 }
 
-function JobRow({ job, onRetry, onDelete }: JobRowProps) {
+function JobRow({ job, onRetry, onDelete, onView }: JobRowProps) {
   const t = useT();
   const status = STATUS_BADGE[job.status] ?? STATUS_BADGE.pending;
   const statusIcon = (() => {
@@ -714,6 +695,21 @@ function JobRow({ job, onRetry, onDelete }: JobRowProps) {
           )}
         </div>
         <div className="flex items-center gap-0.5 flex-shrink-0">
+          {/* Sprint 4 PR 4: View button (PR 3's 2-layer display).
+              Shows for completed + failed jobs — the operator
+              can inspect raw scout data even on failure. */}
+          {(job.status === "failed" || job.status === "completed") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => onView(job.id)}
+              title={t.scout.viewResults}
+              aria-label={t.scout.viewResults}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {(job.status === "failed" || job.status === "completed") && (
             <Button
               variant="ghost"

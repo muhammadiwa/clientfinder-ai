@@ -278,6 +278,42 @@ const STRINGS = {
     noDiscoveriesDesc: "Start a Scout job and new prospects will appear here",
     retry: "Retry",
     delete: "Delete",
+    // Sprint 4 PR 4: View button on Active Jobs card → opens
+    // the 2-layer results page from PR 3.
+    viewResults: "View raw results",
+  },
+
+  // Sprint 4 PR 3: Layer 2 of the hybrid C display
+  // (dedicated /scout-runs/:id/results page + breadcrumb).
+  // Sprint 4.1 followup: flattened from nested (breadcrumb.*,
+  // pagination.*, statusLabels.*) to flat keys to match the
+  // existing scout.* convention.
+  scoutRun: {
+    title: "ScoutRun Results",
+    subtitle: "Full data from this Scout search",
+    foundFrom: "Discovered from",
+    runLabel: "ScoutRun #{id}",
+    resultsCount: "results",
+    view: "View all",
+    maxResults: "max {n} results",
+    resultsCountTotal: "results found",
+    empty: "This ScoutRun has not produced any prospects yet",
+    outOfRange: "This page has no results. Try another page.",
+    statusPending: "Pending",
+    statusRunning: "Running",
+    statusCompleted: "Completed",
+    statusFailed: "Failed",
+    colName: "Name",
+    colRating: "Rating",
+    colReviewCount: "Reviews",
+    colHours: "Hours",
+    colPhone: "Phone",
+    colWebsite: "Website",
+    paginationPrevious: "Previous",
+    paginationNext: "Next",
+    paginationPageLabel: "Page {page} of {pages}",
+    errorMissingId: "Invalid ScoutRun ID",
+    errorNotFound: "ScoutRun not found",
   },
 
   // Prospect detail
