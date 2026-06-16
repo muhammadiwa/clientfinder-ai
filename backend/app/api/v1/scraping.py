@@ -4,7 +4,7 @@ Scraping router — endpoints for Scout module (T4)
 from typing import Annotated
 
 from celery.exceptions import OperationalError
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
 
@@ -145,6 +145,74 @@ async def get_scraping_job(
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
     return job
+
+
+@router.get("/scout-runs/{run_id}/results")
+async def get_scout_run_results(
+    run_id: str,
+    current_user: CurrentUser,
+    db: DB,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
+) -> dict:
+    """Sprint 4 PR 3: paginated raw results for a ScoutRun.
+
+    Returns the ScoutRun metadata + a page of prospects
+    (filtered by scout_run_id, sorted by created_at DESC).
+    Each result includes the full raw_data JSONB so the page
+    can show rating / review_count / hours etc. without an
+    extra round-trip per row.
+
+    Used by the /scout-runs/:id/results frontend page.
+    """
+    from uuid import UUID
+
+    from app.models.prospect import Prospect
+    from app.schemas.prospect import ProspectOut
+
+    try:
+        rid = UUID(run_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid run ID")
+
+    job = (
+        await db.execute(select(ScrapingJob).where(ScrapingJob.id == rid))
+    ).scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail=f"ScoutRun {run_id} not found")
+
+    total_q = select(func.count(Prospect.id)).where(Prospect.scout_run_id == rid)
+    total = (await db.execute(total_q)).scalar_one()
+
+    offset = (page - 1) * per_page
+    results_q = (
+        select(Prospect)
+        .where(Prospect.scout_run_id == rid)
+        .order_by(Prospect.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    prospects = (await db.execute(results_q)).scalars().all()
+
+    pages = (total + per_page - 1) // per_page if per_page else 1
+    return {
+        "run": {
+            "id": str(job.id),
+            "source": job.source,
+            "query": job.query,
+            "status": job.status,
+            "prospects_found": job.prospects_found,
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "error_message": job.error_message,
+        },
+        "results": [ProspectOut.model_validate(p).model_dump(mode="json") for p in prospects],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pages,
+    }
 
 
 @router.post("/jobs/{job_id}/retry", response_model=ScrapingJobOut)

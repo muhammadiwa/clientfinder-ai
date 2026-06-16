@@ -78,6 +78,10 @@ class ProspectOut(ProspectBase):
     tier: str | None
     tier_confidence: float | None
     industry_specific: str | None
+    # Sprint 4 PR 2/3: link back to the ScoutRun that found
+    # this prospect. Nullable for legacy + manually-imported.
+    # Powers the breadcrumb on ProspectDetail (PR 3).
+    scout_run_id: UUID | None = None
 
 
 class ProspectListResponse(BaseModel):

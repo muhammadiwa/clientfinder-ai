@@ -10,6 +10,7 @@ import { ProspectsPage } from "@/pages/Prospects";
 import { ProspectDetailPage } from "@/pages/ProspectDetail";
 import { PipelinePage } from "@/pages/Pipeline";
 import { ScoutPage } from "@/pages/Scout";
+import { ScoutRunResultsPage } from "@/pages/ScoutRunResults";
 import { OutreachPage } from "@/pages/Outreach";
 import SequencesPage from "@/pages/Sequences";
 import { AnalyticsPage } from "@/pages/Analytics";
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: "/prospects/:id", element: <ProspectDetailPage /> },
       { path: "/pipeline", element: <PipelinePage /> },
       { path: "/scout", element: <ScoutPage /> },
+      { path: "/scout-runs/:id/results", element: <ScoutRunResultsPage /> },
       { path: "/outreach", element: <OutreachPage /> },
       { path: "/sequences", element: <SequencesPage /> },
       { path: "/analytics", element: <AnalyticsPage /> },
