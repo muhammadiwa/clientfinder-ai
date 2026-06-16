@@ -280,6 +280,45 @@ const STRINGS = {
     delete: "Delete",
   },
 
+  // Sprint 4 PR 3: Layer 2 of the hybrid C display
+  // (dedicated /scout-runs/:id/results page + breadcrumb)
+  scoutRun: {
+    title: "ScoutRun Results",
+    subtitle: "Full data from this Scout search",
+    breadcrumb: {
+      foundFrom: "Discovered from",
+      runLabel: "ScoutRun #{id}",
+      resultsCount: "results",
+      view: "View all",
+    },
+    maxResults: "max {n} results",
+    resultsCount: "results found",
+    empty: "This ScoutRun has not produced any prospects yet",
+    error: {
+      missingId: "Invalid ScoutRun ID",
+      notFound: "ScoutRun not found",
+    },
+    statusLabels: {
+      pending: "Pending",
+      running: "Running",
+      completed: "Completed",
+      failed: "Failed",
+    },
+    tableHeaders: {
+      name: "Name",
+      rating: "Rating",
+      reviewCount: "Reviews",
+      hours: "Hours",
+      phone: "Phone",
+      website: "Website",
+    },
+    pagination: {
+      previous: "Previous",
+      next: "Next",
+      pageLabel: "Page {page} of {pages}",
+    },
+  },
+
   // Prospect detail
   prospectDetail: {
     couldNotLoad: "Could not load prospect",

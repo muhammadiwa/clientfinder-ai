@@ -33,6 +33,7 @@ import { TierBadge } from "@/components/TierBadge";
 import { ScoreBreakdownChart } from "@/components/charts/ScoreBreakdown";
 import { SignalList } from "@/components/SignalList";
 import { EnrollmentPanel } from "@/components/EnrollmentPanel";
+import { ScoutRunBreadcrumb } from "@/components/ScoutRunBreadcrumb";
 import {
   classifyProspect,
   enrichProspect,
@@ -229,11 +230,28 @@ export function ProspectDetailPage() {
     );
   }
 
-  const { prospect, tech_stack, pain_points, lead_score, hooks, signals } = detail;
+  const {
+    prospect,
+    tech_stack,
+    pain_points,
+    lead_score,
+    hooks,
+    signals,
+    scout_run_id: scoutRunId,
+    scout_run_total: scoutRunTotal,
+  } = detail;
   const hasScore = lead_score != null;
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Sprint 4 PR 3: breadcrumb linking back to the ScoutRun
+          that found this prospect. Layer 1 of the hybrid C display
+          — small, clean, deep-linkable. */}
+      <ScoutRunBreadcrumb
+        scoutRunId={scoutRunId}
+        totalCount={scoutRunTotal}
+      />
+
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4">
         <Button

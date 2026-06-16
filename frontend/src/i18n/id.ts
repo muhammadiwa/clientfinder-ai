@@ -283,6 +283,45 @@ const STRINGS = {
     delete: "Hapus",
   },
 
+  // Sprint 4 PR 3: Layer 2 of the hybrid C display
+  // (dedicated /scout-runs/:id/results page + breadcrumb)
+  scoutRun: {
+    title: "Hasil ScoutRun",
+    subtitle: "Data lengkap hasil pencarian Scout",
+    breadcrumb: {
+      foundFrom: "Ditemukan dari",
+      runLabel: "ScoutRun #{id}",
+      resultsCount: "hasil",
+      view: "Lihat semua",
+    },
+    maxResults: "maks {n} hasil",
+    resultsCount: "hasil ditemukan",
+    empty: "ScoutRun ini belum menghasilkan prospek apapun",
+    error: {
+      missingId: "ID ScoutRun tidak valid",
+      notFound: "ScoutRun tidak ditemukan",
+    },
+    statusLabels: {
+      pending: "Menunggu",
+      running: "Berjalan",
+      completed: "Selesai",
+      failed: "Gagal",
+    },
+    tableHeaders: {
+      name: "Nama",
+      rating: "Rating",
+      reviewCount: "Ulasan",
+      hours: "Jam buka",
+      phone: "Telepon",
+      website: "Website",
+    },
+    pagination: {
+      previous: "Sebelumnya",
+      next: "Selanjutnya",
+      pageLabel: "Halaman {page} dari {pages}",
+    },
+  },
+
   // Prospect detail
   prospectDetail: {
     couldNotLoad: "Tidak dapat memuat prospek",

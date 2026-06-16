@@ -76,6 +76,12 @@ export interface ProspectDetailResponse {
   lead_score: LeadScore | null;
   hooks: Hook[];
   signals: SignalItem[];
+  // Sprint 4 PR 3: link to the ScoutRun that found this
+  // prospect. Powers the breadcrumb on ProspectDetail.
+  scout_run_id?: string | null;
+  // Sprint 4 PR 3: the total number of results the ScoutRun
+  // produced (for the breadcrumb's "via X · N total" hint).
+  scout_run_total?: number | null;
 }
 
 export interface SignalItem {
