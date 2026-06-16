@@ -89,40 +89,77 @@ class TestScoutSchemaNoDeactivated:
 
 
 class TestOrchestratorNoAutoEnrich:
-    """The orchestrator's enrich_prospect() must NOT auto-fire:
-    - social_scan_and_persist (T9.0 social signal scan)
-    - classify_and_persist (Sprint 3B tier/industry classifier)
+    """Auto-enrich must be OFF by default per the v1 redesign.
 
-    Both are now opt-in via the per-prospect "Enrich" button in
-    the UI. The auto-fire was removed in PR 1 because it made the
-    scout→prospect flow confusing (operator couldn't see raw data
-    before enrichment, and LLM costs fired per-prospect without
-    opt-in).
+    User spec (turn 58): "hapus dulu proses enrich otomatis kita
+    ulang dari awal lagi" — start with nothing enriched, the
+    operator clicks "Enrich" on ProspectDetail to trigger.
+
+    Two layers must agree:
+    1. `enrich_prospect()` itself does NOT call the v9 social
+       scan or v3B tier classifier (these were the 2 blocks
+       removed in PR 115 sub-task B).
+    2. The auto-fire path in `scraping_tasks._run_job` does NOT
+       enqueue `enrich_prospect_task.delay()` by default — it's
+       gated by `scout_auto_enrich_enabled` (default False).
     """
 
     @pytest.mark.asyncio
     async def test_enrich_prospect_does_not_call_social_scan(self):
         """Source inspection: enrich_prospect must not import or
-        call social_scan_and_persist."""
+        call social_scan_and_persist (the T9.0 social signal
+        scan block that was removed in PR 115 sub-task B)."""
         import inspect
         from app.services.analyzer import orchestrator
         source = inspect.getsource(orchestrator.enrich_prospect)
         assert "social_scan_and_persist" not in source, (
-            "enrich_prospect() should NOT auto-fire social_scan_and_persist. "
-            "Per PR 1 (scout-deconstruct), enrichment is opt-in via "
+            "enrich_prospect() should NOT call social_scan_and_persist. "
+            "Per PR 115 sub-task B, social-scan is opt-in via "
             "the per-prospect 'Enrich' button in the UI."
         )
 
     @pytest.mark.asyncio
     async def test_enrich_prospect_does_not_call_classify(self):
         """Source inspection: enrich_prospect must not import or
-        call classify_and_persist."""
+        call classify_and_persist (the Sprint 3B tier/industry
+        classifier that was removed in PR 115 sub-task B)."""
         import inspect
         from app.services.analyzer import orchestrator
         source = inspect.getsource(orchestrator.enrich_prospect)
         assert "classify_and_persist" not in source, (
-            "enrich_prospect() should NOT auto-fire classify_and_persist. "
-            "Per PR 1 (scout-deconstruct), tier classification is opt-in."
+            "enrich_prospect() should NOT call classify_and_persist. "
+            "Per PR 115 sub-task B, tier classification is opt-in."
+        )
+
+    def test_scraping_tasks_does_not_auto_enqueue_enrich(self):
+        """Call-site inspection: scraping_tasks._run_job must NOT
+        call enrich_prospect_task.delay() unconditionally. It must
+        be gated by scout_auto_enrich_enabled. PR 115 sub-task B
+        claimed auto-enrich was removed, but the call was still
+        firing — this test catches re-introduction.
+
+        Allow either:
+        - enrich_prospect_task.delay is not called at all, OR
+        - enrich_prospect_task.delay is gated by
+          settings.scout_auto_enrich_enabled (the v1 default).
+        """
+        import inspect
+        from app.tasks import scraping_tasks
+        src = inspect.getsource(scraping_tasks._run_job)
+        if "enrich_prospect_task.delay" in src:
+            # If the call exists, it must be gated
+            assert "scout_auto_enrich_enabled" in src, (
+                "scraping_tasks._run_job calls enrich_prospect_task.delay "
+                "but the call is not gated by scout_auto_enrich_enabled. "
+                "Per PR 115 followup, auto-enrich must be off by default."
+            )
+
+    def test_scout_auto_enrich_enabled_default_is_false(self):
+        """The kill switch must default to False (off)."""
+        from app.core.config import settings
+        assert settings.scout_auto_enrich_enabled is False, (
+            "scout_auto_enrich_enabled should default to False. "
+            "v1 = opt-in enrichment via the per-prospect button."
         )
 
 

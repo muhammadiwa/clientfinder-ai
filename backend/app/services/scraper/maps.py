@@ -74,9 +74,18 @@ class GoogleMapsScraper(BaseScraper):
         if not keywords:
             raise ScraperError("Maps: 'keywords' is required")
         location = (query.get("location") or "").strip()
-        max_results = min(
-            int(query.get("max_results") or self.DEFAULT_LIMIT),
-            self.MAX_HARD_CAP,
+        # Guard against negative / zero max_results. The Pydantic
+        # schema enforces ge=1, le=100, but the scraper is also
+        # called from the Celery task with a raw query dict where
+        # a corrupted value could slip through. Without the max(1, …)
+        # guard, max_results=-5 would break the loop on iter 0 and
+        # silently return 0 results.
+        max_results = max(
+            1,
+            min(
+                int(query.get("max_results") or self.DEFAULT_LIMIT),
+                self.MAX_HARD_CAP,
+            ),
         )
 
         search_query = f"{keywords} {location}".strip() if location else keywords
