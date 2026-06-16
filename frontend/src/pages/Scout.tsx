@@ -4,7 +4,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
   MapPin,
@@ -21,6 +21,8 @@ import {
   ArrowRight,
   Lock,
   ExternalLink,
+  Inbox,
+  Compass,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -118,21 +120,65 @@ const STATUS_BADGE: Record<
 
 const POLL_INTERVAL_MS = 3_000;
 
-// Quick-step max results options (P2-A4: replaces slider with chips).
-// Sprint 4 / PR 1 followup: extended to 1000 to match the
-// backend MAX_HARD_CAP. Per the v1 redesign — "all data saved
-// for enrichment, no max results cap". Backend DEFAULT_LIMIT=200
-// is used when no value is given.
-const MAX_RESULTS_OPTIONS = [5, 10, 20, 50, 100, 250, 500, 1000] as const;
+type ScoutTab = "search" | "history" | "discoveries";
+
+/**
+ * Minimal tab button — no shadcn dependency.
+ * Active = violet bg + white text. Inactive = muted.
+ */
+function TabButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-sm font-medium transition-colors",
+        active
+          ? "bg-violet-600 text-white shadow-sm"
+          : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
 
 export function ScoutPage() {
   const t = useT();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Tab state — deep-linkable via ?tab=...
+  const rawTab = searchParams.get("tab");
+  const activeTab: ScoutTab =
+    rawTab === "history" || rawTab === "discoveries" ? rawTab : "search";
+  const setActiveTab = (tab: ScoutTab) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", tab);
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
   // Form state
   const [source, setSource] = useState<ScrapingSource>("maps");
   const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
-  const [maxResults, setMaxResults] = useState(20);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
     keywords?: string;
@@ -218,7 +264,6 @@ export function ScoutPage() {
     setSource(p.source);
     setKeywords(p.query.keywords);
     setLocation(p.query.location ?? "");
-    setMaxResults(p.query.max_results ?? 20);
     document
       .getElementById("scout-form-card")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -260,7 +305,10 @@ export function ScoutPage() {
       source,
       keywords: keywords.trim(),
       location: location.trim() || undefined,
-      max_results: maxResults,
+      // max_results removed from the UI per v1 redesign —
+      // the backend uses DEFAULT_LIMIT=200. Per user spec
+      // (turn 58): "tidak perlu ada jumlah hasil maksimal tetapi
+      // semua datanya disimpan untuk di enrich".
     };
     try {
       await createScrapingJob(payload);
@@ -356,6 +404,36 @@ export function ScoutPage() {
         )}
       </div>
 
+      <div className="space-y-3">
+        {/* Sprint 5 (scout-tabbed-layout): 3 tabs.
+            ?tab=search | history | discoveries (deep-linkable). */}
+        <div
+          role="tablist"
+          aria-label="Scout sections"
+          className="inline-flex items-center gap-1 p-1 rounded-lg border border-border bg-muted/30"
+        >
+          <TabButton
+            active={activeTab === "search"}
+            onClick={() => setActiveTab("search")}
+            icon={<Compass className="h-3.5 w-3.5" />}
+            label={t.scout.tabs.search}
+          />
+          <TabButton
+            active={activeTab === "history"}
+            onClick={() => setActiveTab("history")}
+            icon={<Inbox className="h-3.5 w-3.5" />}
+            label={`${t.scout.tabs.history} (${jobs.length})`}
+          />
+          <TabButton
+            active={activeTab === "discoveries"}
+            onClick={() => setActiveTab("discoveries")}
+            icon={<SparklesIcon className="h-3.5 w-3.5" />}
+            label={t.scout.tabs.discoveries}
+          />
+        </div>
+      </div>
+
+      {activeTab === "search" && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Create job form */}
         <Card id="scout-form-card" className="lg:col-span-2">
@@ -451,40 +529,14 @@ export function ScoutPage() {
                 hint="Opsional — kosongkan untuk pencarian global"
                 error={fieldErrors.location}
               >
-                <Input
-                  placeholder={t.scout.locationPlaceholder}
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  disabled={submitting}
-                  className="h-10"
-                />
+              <Input
+                placeholder={t.scout.locationPlaceholder}
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                disabled={submitting}
+                className="h-10"
+              />
               </FormField>
-
-              {/* P2-A4: segmented control instead of slider */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Jumlah hasil maksimal</label>
-                <div className="flex flex-wrap gap-2">
-                  {MAX_RESULTS_OPTIONS.map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setMaxResults(n)}
-                      disabled={submitting}
-                      className={cn(
-                        "px-3 h-9 rounded-lg text-sm font-medium border transition-all duration-150",
-                        maxResults === n
-                          ? "bg-violet-600 text-white border-violet-600 shadow-glow-sm"
-                          : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-violet-300",
-                      )}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Estimasi ~{Math.ceil(maxResults / 5)} detik waktu pencarian
-                </p>
-              </div>
 
               <Button
                 type="submit"
@@ -552,8 +604,56 @@ export function ScoutPage() {
           </CardContent>
         </Card>
       </div>
+      )}
 
-      {/* Recent discoveries — P1-A10: only scout-found */}
+      {activeTab === "history" && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  {t.scout.tabs.history}
+                </CardTitle>
+                <CardDescription>
+                  {hasActiveJobs ? t.scout.polling : t.scout.idle}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {jobsLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12" />
+                ))}
+              </div>
+            ) : jobs.length === 0 ? (
+              <EmptyState
+                className="py-6"
+                icon={<Sparkles className="h-5 w-5" />}
+                title={t.scout.noJobs}
+                description={t.scout.noJobsDesc}
+              />
+            ) : (
+              <div className="space-y-2">
+                {jobs.map((job) => (
+                  <JobRow
+                    key={job.id}
+                    job={job}
+                    onRetry={handleRetry}
+                    onDelete={handleDelete}
+                    onView={(id) => navigate(`/scout-runs/${id}/results`)}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "discoveries" && (
+      /* Recent discoveries — P1-A10: only scout-found */
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -617,6 +717,7 @@ export function ScoutPage() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
