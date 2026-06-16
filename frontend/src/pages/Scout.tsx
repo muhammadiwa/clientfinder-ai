@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   MapPin,
@@ -19,6 +20,7 @@ import {
   Sparkles as SparklesIcon,
   ArrowRight,
   Lock,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -125,6 +127,7 @@ const MAX_RESULTS_OPTIONS = [5, 10, 20, 50, 100, 250, 500, 1000] as const;
 
 export function ScoutPage() {
   const t = useT();
+  const navigate = useNavigate();
   // Form state
   const [source, setSource] = useState<ScrapingSource>("maps");
   const [keywords, setKeywords] = useState("");
@@ -535,14 +538,15 @@ export function ScoutPage() {
               />
             ) : (
               <div className="space-y-2 max-h-[480px] overflow-y-auto -mx-1 px-1">
-                {jobs.slice(0, 10).map((job) => (
-                  <JobRow
-                    key={job.id}
-                    job={job}
-                    onRetry={handleRetry}
-                    onDelete={handleDelete}
-                  />
-                ))}
+                  {jobs.slice(0, 10).map((job) => (
+                    <JobRow
+                      key={job.id}
+                      job={job}
+                      onRetry={handleRetry}
+                      onDelete={handleDelete}
+                      onView={(id) => navigate(`/scout-runs/${id}/results`)}
+                    />
+                  ))}
               </div>
             )}
           </CardContent>
@@ -621,9 +625,10 @@ interface JobRowProps {
   job: ScrapingJob;
   onRetry: (id: string) => void;
   onDelete: (id: string) => void;
+  onView: (id: string) => void;
 }
 
-function JobRow({ job, onRetry, onDelete }: JobRowProps) {
+function JobRow({ job, onRetry, onDelete, onView }: JobRowProps) {
   const t = useT();
   const status = STATUS_BADGE[job.status] ?? STATUS_BADGE.pending;
   const statusIcon = (() => {
@@ -690,6 +695,21 @@ function JobRow({ job, onRetry, onDelete }: JobRowProps) {
           )}
         </div>
         <div className="flex items-center gap-0.5 flex-shrink-0">
+          {/* Sprint 4 PR 4: View button (PR 3's 2-layer display).
+              Shows for completed + failed jobs — the operator
+              can inspect raw scout data even on failure. */}
+          {(job.status === "failed" || job.status === "completed") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => onView(job.id)}
+              title={t.scout.viewResults}
+              aria-label={t.scout.viewResults}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {(job.status === "failed" || job.status === "completed") && (
             <Button
               variant="ghost"

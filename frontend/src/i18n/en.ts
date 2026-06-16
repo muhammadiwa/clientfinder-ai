@@ -278,6 +278,9 @@ const STRINGS = {
     noDiscoveriesDesc: "Start a Scout job and new prospects will appear here",
     retry: "Retry",
     delete: "Delete",
+    // Sprint 4 PR 4: View button on Active Jobs card → opens
+    // the 2-layer results page from PR 3.
+    viewResults: "View raw results",
   },
 
   // Sprint 4 PR 3: Layer 2 of the hybrid C display
