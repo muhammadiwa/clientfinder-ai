@@ -109,18 +109,32 @@ async def list_scraping_jobs(
     Sprint 4.1 followup: filtered by created_by to prevent
     cross-tenant data leak. Same IDOR fix as the
     /scout-runs/{id}/results endpoint from PR 3.
+
+    Bug fix (PR 123 followup): legacy rows from before PR 1
+    have `source` values that are no longer in the
+    `ScrapingSource` Literal (`google`, `google_places`,
+    `tokopedia`, `yelp`). Including them in the list crashed
+    Pydantic v2 model_validate → 500 error. We now INCLUDE
+    only jobs whose source is in the current registry.
+    Legacy rows still exist in the DB (per deprecate-not-delete)
+    but are filtered at the API boundary.
     """
+    from app.schemas.scraping import ScrapingSource as _SS
     per_page = min(max(per_page, 1), 100)
     offset = (max(page, 1) - 1) * per_page
+    active_sources = [s for s in _SS.__args__]  # Literal members
 
-    count_q = select(func.count(ScrapingJob.id)).where(
-        ScrapingJob.created_by == current_user.id
-    )
+    base_filter = [
+        ScrapingJob.created_by == current_user.id,
+        ScrapingJob.source.in_(active_sources),
+    ]
+
+    count_q = select(func.count(ScrapingJob.id)).where(*base_filter)
     total = (await db.execute(count_q)).scalar() or 0
 
     q = (
         select(ScrapingJob)
-        .where(ScrapingJob.created_by == current_user.id)
+        .where(*base_filter)
         .order_by(desc(ScrapingJob.created_at))
         .offset(offset)
         .limit(per_page)

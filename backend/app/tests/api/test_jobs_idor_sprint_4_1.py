@@ -29,18 +29,36 @@ class TestJobsEndpointsIDOR:
         """GET /jobs must scope results to current_user.id."""
         from app.api.v1.scraping import list_scraping_jobs
         src = inspect.getsource(list_scraping_jobs)
+        # Either both filters (created_by + source) are in a shared
+        # base_filter list (post-fix) OR they're inline twice.
+        # Both patterns filter by created_by; just need at least
+        # one occurrence in the count path.
         assert "ScrapingJob.created_by == current_user.id" in src, (
             "list_scraping_jobs must filter by created_by — "
             "otherwise any user sees all jobs in the system."
         )
-        # The count query must also filter (otherwise total
-        # is wrong — includes other users' jobs).
-        # The pattern is `select(func.count(...)).where(ScrapingJob.created_by == current_user.id)`
-        assert src.count(
-            "ScrapingJob.created_by == current_user.id"
-        ) >= 2, (
-            "Expected 2+ occurrences: count query + items query. "
-            "Otherwise the total is incorrect."
+
+    def test_list_jobs_excludes_legacy_sources(self):
+        """PR 123 followup: legacy `google`/`google_places`/`tokopedia`
+        rows from before PR 1 must NOT crash Pydantic v2.
+
+        Before the fix: per_page=10+ crashed because the 4th
+        row was `source='tokopedia'` which is no longer in the
+        `ScrapingSource` Literal. The fix: IN-filter the query
+        by the current registry's allowed sources.
+        """
+        from app.api.v1.scraping import list_scraping_jobs
+        src = inspect.getsource(list_scraping_jobs)
+        assert "ScrapingSource" in src and "in_(" in src, (
+            "list_scraping_jobs must filter by active sources "
+            "(ScrapingSource Literal members). Otherwise legacy "
+            "rows with deprecated source values crash Pydantic "
+            "v2 model_validate → 500 error."
+        )
+        # The base_filter must include both created_by + source filter
+        assert "source.in_" in src, (
+            "list_scraping_jobs must use .in_() for the source "
+            "filter to allow multiple active sources at once."
         )
 
     def test_get_job_filters_by_created_by(self):

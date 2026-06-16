@@ -281,6 +281,12 @@ const STRINGS = {
     // Sprint 4 PR 4: View button on Active Jobs card → opens
     // the 2-layer results page from PR 3.
     viewResults: "View raw results",
+    // Sprint 5 (scout-tabbed-layout): 3-tab layout.
+    tabs: {
+      search: "New Search",
+      history: "History",
+      discoveries: "Discoveries",
+    },
   },
 
   // Sprint 4 PR 3: Layer 2 of the hybrid C display
