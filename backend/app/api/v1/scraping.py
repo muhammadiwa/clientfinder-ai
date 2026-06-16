@@ -233,8 +233,8 @@ async def list_scraping_presets(
     return [
         ScrapingPresetOut(
             id="preset-klinik-jabodetabek",
-            name="Klinik Gigi — Jabodetabek",
-            source="google",
+            name="Klinik Gigi (Maps) — Jabodetabek",
+            source="maps",
             query=ScrapingQuery(
                 keywords="klinik gigi", location="Jabodetabek", max_results=30
             ),

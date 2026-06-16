@@ -169,6 +169,15 @@ class Settings(BaseSettings):
     scout_enrichment_page_timeout_s: int = 12
     scout_enrichment_overall_timeout_s: int = 240
     scout_enrichment_max_concurrent: int = 1
+    # Sprint 4 / PR 1 followup: auto-enrich hook (per-prospect
+    # website audit + scoring) was removed in PR 115 but the
+    # wiring in scraping_tasks._run_job was still auto-firing
+    # enrich_prospect_task.delay() for every new prospect. This
+    # kill switch controls the auto-fire path. v1 = False
+    # (opt-in via the per-prospect "Enrich" button in the UI).
+    # Aligns with the user spec: "hapus dulu proses enrich
+    # otomatis kita ulang dari awal lagi".
+    scout_auto_enrich_enabled: bool = False
 
     # Outreach
     outreach_auto_approve: bool = False

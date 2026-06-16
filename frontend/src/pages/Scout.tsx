@@ -116,8 +116,12 @@ const STATUS_BADGE: Record<
 
 const POLL_INTERVAL_MS = 3_000;
 
-// Quick-step max results options (P2-A4: replaces slider with chips)
-const MAX_RESULTS_OPTIONS = [5, 10, 20, 35, 50] as const;
+// Quick-step max results options (P2-A4: replaces slider with chips).
+// Sprint 4 / PR 1 followup: extended to 1000 to match the
+// backend MAX_HARD_CAP. Per the v1 redesign — "all data saved
+// for enrichment, no max results cap". Backend DEFAULT_LIMIT=200
+// is used when no value is given.
+const MAX_RESULTS_OPTIONS = [5, 10, 20, 50, 100, 250, 500, 1000] as const;
 
 export function ScoutPage() {
   const t = useT();
